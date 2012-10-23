@@ -627,7 +627,7 @@ config EXPERIMENTAL_FREQ_TABLE
         default n
 	bool "Use experimental 8X50 freq table"
         help
-          Allow the use of experimental frequencies upto 2200Mhz for QSD8X50.
+          Allow the use of experimental frequencies upto 1850Mhz for QSD8X50.
 
 if CPU_FREQ_MSM
 
