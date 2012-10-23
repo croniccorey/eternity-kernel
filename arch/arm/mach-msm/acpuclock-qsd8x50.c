@@ -65,7 +65,7 @@ struct clkctl_acpu_speed {
 
 /* clock sources */
 #define CLK_TCXO	0 /* 19.2 MHz */
-#define CLK_GLOBAL_PLL	1 /* 768 MHz */
+#define CLK_GLOBAL_PLL	1 /* 750 MHz */
 #define CLK_MODEM_PLL	4 /* 245 MHz (UMTS) or 235.93 MHz (CDMA) */
 
 #define CCTL(src, div) (((src) << 4) | (div - 1))
@@ -73,48 +73,46 @@ struct clkctl_acpu_speed {
 /* core sources */
 #define SRC_RAW		0 /* clock from SPSS_CLK_CNTL */
 #define SRC_SCPLL	1 /* output of scpll 19-1220 MHZ */
-#define SRC_AXI		2 /* 176 MHz */
-#define SRC_PLL1	3 /* 768 MHz */
+#define SRC_AXI		2 /* 175 MHz */
+#define SRC_PLL1	3 /* 750 MHz */
 
 struct clkctl_acpu_speed acpu_freq_tbl[] = {
   {  19200, CCTL(CLK_TCXO, 1),		SRC_RAW, 0, 0, 1050, 14000 , 1 },
-  { 176000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 1050, 14000 , 0 },
+  { 175000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 1050, 14000 , 0 },
   { 245000, CCTL(CLK_MODEM_PLL, 1),	SRC_RAW, 0, 0, 1050, 29000 , 0 },
   /* Work arround for acpu resume hung, GPLL is turn off by arm9 */
   /*{ 256000, CCTL(CLK_GLOBAL_PLL, 3),	SRC_RAW, 0, 0, 1050, 29000 , 1 },*/
-  { 384000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1050, 58000 , 0 },
-  { 422400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 , 0 },
-  { 499200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1075, 117000 , 0 },
-  { 576000, CCTL(CLK_TCXO, 1),  	SRC_SCPLL, 0x0D, 0, 1100, 117000 , 0 },
-  { 614400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1125, 117000 , 0 },
-  { 729600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1200, 117000 , 0 },
-  { 768000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1200, 128000 , 0 },
-  { 844800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1250, 128000 , 0 },
-  { 921600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1275, 128000 , 0 },
-  { 998400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1275, 128000 , 0 },
-  { 1036800, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x14, 0, 1275, 128000 , 0 },
-  { 1075200, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x15, 0, 1275, 128000 , 0 },
-  { 1113600, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x16, 0, 1275, 128000 , 0 },
-  { 1152000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x17, 0, 1300, 128000 , 0 }, 
-  { 1200000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x18, 0, 1300, 160000 , 0 },
-  { 1250000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 160000 , 0 },
-  { 1300000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1B, 0, 1300, 160000 , 0 },
-  { 1350000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1C, 0, 1325, 160000 , 0 },
-  { 1400000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1D, 0, 1325, 160000 , 0 },
-  { 1450000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1E, 0, 1325, 160000 , 0 },
-  { 1500000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1F, 0, 1325, 172000 , 0 },
-  { 1550000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x20, 0, 1350, 172000 , 0 },
-  { 1600000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x21, 0, 1350, 172000 , 0 },
-  { 1650000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x22, 0, 1350, 172000 , 0 },
-  { 1700000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x23, 0, 1350, 172000 , 0 },
-  { 1750000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x24, 0, 1350, 172000 , 0 },
-  { 1800000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x25, 0, 1375, 256000 , 0 },
+  { 400000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1050, 58000 , 1 },
+  { 450000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 , 1 },
+  { 500000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1075, 117000 , 0 },
+  { 550000, CCTL(CLK_TCXO, 1),  	SRC_SCPLL, 0x0D, 0, 1100, 117000 , 1 },
+  { 600000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1125, 117000 , 1 },
+  { 700000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1200, 117000 , 1 },
+  { 750000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1200, 128000 , 0 },
+  { 850000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1250, 128000 , 0 },
+  { 900000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1275, 128000 , 1 },
+  { 950000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1275, 128000 , 0 },
+  { 1000000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x14, 0, 1275, 128000 , 0 },
+  { 1050000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x15, 0, 1275, 128000 , 1 },
+  { 1100000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x16, 0, 1275, 128000 , 0 },
+  { 1150000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x17, 0, 1300, 176000 , 1 }, 
+  { 1200000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x18, 0, 1300, 176000 , 1 },
+  { 1250000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 176000 , 0 },
+  { 1300000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1B, 0, 1300, 176000 , 1 },
+  { 1350000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1C, 0, 1325, 176000 , 0 },
+  { 1400000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1D, 0, 1325, 176000 , 1 },
+  { 1450000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1E, 0, 1325, 176000 , 1 },
+  { 1500000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1F, 0, 1325, 176000 , 0 },
+/* EXPERIMENTAL USE AT YOUR OWN RISK */
+#ifdef CONFIG_EXPERIMENTAL_FREQ_TABLE
+  { 1550000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x20, 0, 1350, 176000 , 1 },
+  { 1600000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x21, 0, 1350, 176000 , 0 }, 
+  { 1650000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x22, 0, 1350, 176000 , 1 },
+  { 1700000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x23, 0, 1350, 256000 , 1 },
+  { 1750000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x24, 0, 1350, 256000 , 0 },
+  { 1800000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x25, 0, 1375, 256000 , 1 },
   { 1850000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x26, 0, 1375, 256000 , 0 },
-  { 1900000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x27, 0, 1375, 256000 , 0 },
-  { 1950000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x28, 0, 1375, 256000 , 0 },
-  { 2000000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x2A, 0, 1400, 256000 , 0 }, //
-  { 2100000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x2B, 0, 1400, 256000 , 0 }, // Experimental *USE AT YOUR OWN RISK*
-  { 2200000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x2C, 0, 1400, 256000 , 0 }, //
+#endif
   { 0 },
 };
 
@@ -151,7 +149,7 @@ static void __init acpuclk_init_cpufreq_table(void)
 		}
 		/* Allow mpll and the first scpll speeds */
 		if (acpu_freq_tbl[i].acpu_khz == acpu_mpll->acpu_khz ||
-				acpu_freq_tbl[i].acpu_khz == 384000) {
+				acpu_freq_tbl[i].acpu_khz == 400000) {
 			freq_table[i].frequency = acpu_freq_tbl[i].acpu_khz;
 			continue;
 		}
@@ -389,25 +387,20 @@ int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
 		/* Increase VDD if needed. */
 
 #ifdef CONFIG_MSM_CPU_AVS
-		//if(avs_enabled()) {
-			// Notify avs before changing frequency
-			rc = avs_adjust_freq(freq_index, 1);
-			if (rc) {
-				pr_err("Unable to increase ACPU vdd (%d)\n", rc);
-				goto out;
-			}
-			//} else {
-			//#endif // CONFIG_MSM_CPU_AVS
+		// Notify avs before changing frequency
+		rc = avs_adjust_freq(freq_index, 1);
+		if (rc) {
+			pr_err("Unable to increase ACPU vdd (%d)\n", rc);
+			goto out;
+		}
 #else
-			if (next->vdd > cur->vdd) {
-				if (acpuclk_set_vdd_level(next->vdd)) {
-					pr_err("acpuclock: Unable to increase ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
-					mutex_unlock(&drv_state.lock);
-					return -EINVAL;
-				}
+		if (next->vdd > cur->vdd) {
+			if (acpuclk_set_vdd_level(next->vdd)) {
+				pr_err("acpuclock: Unable to increase ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
+				mutex_unlock(&drv_state.lock);
+				return -EINVAL;
 			}
-			//#ifdef CONFIG_MSM_CPU_AVS
-			  //}
+		}
 #endif // CONFIG_MSM_CPU_AVS
 	}
 
@@ -449,22 +442,16 @@ int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
 out:
 	if (reason == SETRATE_CPUFREQ) {
 #ifdef CONFIG_MSM_CPU_AVS
-	  //if(avs_enabled()) {
-			/* notify avs after changing frequency */
-			rc = avs_adjust_freq(freq_index, 0);
-			if (rc)
-				pr_warning("Unable to drop ACPU vdd (%d)\n", rc);
-			//	} else {
-			//#endif // CONFIG_MSM_CPU_AVS
+		/* notify avs after changing frequency */
+		rc = avs_adjust_freq(freq_index, 0);
+		if (rc)
+			pr_warning("Unable to drop ACPU vdd (%d)\n", rc);
 #else
-			/* Drop VDD level if we can. */
-			if (next->vdd < cur->vdd) {
-				if (acpuclk_set_vdd_level(next->vdd))
-				/*	pr_err("acpuclock: Unable to drop ACPU VDD.\n");*/
-					pr_err("acpuclock: Unable to drop ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
-			}
-			//#ifdef CONFIG_MSM_CPU_AVS
-			  //}
+		/* Drop VDD level if we can. */
+		if (next->vdd < cur->vdd) {
+			if (acpuclk_set_vdd_level(next->vdd))
+				pr_err("acpuclock: Unable to drop ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
+		}
 #endif // CONFIG_MSM_CPU_AVS
 		mutex_unlock(&drv_state.lock);
 	}
@@ -520,15 +507,15 @@ static void __init acpuclk_init(void)
 		BUG();
 	}
 
-	/* Move to 768MHz for boot, which is a safe frequency
+	/* Move to 750MHz for boot, which is a safe frequency
 	 * for all versions of Scorpion at the moment.
 	 */
 	speed = acpu_freq_tbl;
 	for (;;) {
-		if (speed->acpu_khz == 768000)
+		if (speed->acpu_khz == 750000)
 			break;
 		if (speed->acpu_khz == 0) {
-			pr_err("acpuclk_init: cannot find 768MHz\n");
+			pr_err("acpuclk_init: cannot find 750MHz\n");
 			BUG();
 		}
 		speed++;
