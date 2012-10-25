@@ -35,8 +35,6 @@
 #include <linux/oom.h>
 #include <linux/sched.h>
 #include <linux/notifier.h>
-#include <linux/fs.h>
-#include <linux/swap.h>
 
 static uint32_t lowmem_debug_level = 2;
 static int lowmem_adj[6] = {
@@ -56,7 +54,6 @@ static int lowmem_minfree_size = 4;
 
 static struct task_struct *lowmem_deathpending;
 static unsigned long lowmem_deathpending_timeout;
-static int fudgeswap = 512;
 
 #define lowmem_print(level, x...)			\
 	do {						\
@@ -82,7 +79,7 @@ task_notify_func(struct notifier_block *self, unsigned long val, void *data)
 	return NOTIFY_OK;
 }
 
-static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
+static int lowmem_shrink(struct shrinker *s, int nr_to_scan, gfp_t gfp_mask)
 {
 	struct task_struct *p;
 	struct task_struct *selected = NULL;
@@ -108,19 +105,6 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	    time_before_eq(jiffies, lowmem_deathpending_timeout))
 		return 0;
 
-#ifdef CONFIG_SWAP
-	if(fudgeswap != 0){
-		struct sysinfo si;
-		si_swapinfo(&si);
-
-		if(si.freeswap > 0){
-			if(fudgeswap > si.freeswap)
-				other_file += si.freeswap;
-			else
-				other_file += fudgeswap;
-		}
-	}
-#endif
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
 	if (lowmem_minfree_size < array_size)
@@ -132,17 +116,17 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			break;
 		}
 	}
-	if (sc->nr_to_scan > 0)
-		lowmem_print(3, "lowmem_shrink %lu, %x, ofree %d %d, ma %d\n",
-			     sc->nr_to_scan, sc->gfp_mask, other_free, other_file,
+	if (nr_to_scan > 0)
+		lowmem_print(3, "lowmem_shrink %d, %x, ofree %d %d, ma %d\n",
+			     nr_to_scan, gfp_mask, other_free, other_file,
 			     min_adj);
 	rem = global_page_state(NR_ACTIVE_ANON) +
 		global_page_state(NR_ACTIVE_FILE) +
 		global_page_state(NR_INACTIVE_ANON) +
 		global_page_state(NR_INACTIVE_FILE);
-	if (sc->nr_to_scan <= 0 || min_adj == OOM_ADJUST_MAX + 1) {
-		lowmem_print(5, "lowmem_shrink %lu, %x, return %d\n",
-			     sc->nr_to_scan, sc->gfp_mask, rem);
+	if (nr_to_scan <= 0 || min_adj == OOM_ADJUST_MAX + 1) {
+		lowmem_print(5, "lowmem_shrink %d, %x, return %d\n",
+			     nr_to_scan, gfp_mask, rem);
 		return rem;
 	}
 	selected_oom_adj = min_adj;
@@ -183,12 +167,6 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     p->pid, p->comm, oom_adj, tasksize);
 	}
 	if (selected) {
-		if (fatal_signal_pending(selected)) {
-			pr_warning("process %d is suffering a slow death\n",
-				   selected->pid);
-			read_unlock(&tasklist_lock);
-			return rem;
-		}
 		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d\n",
 			     selected->pid, selected->comm,
 			     selected_oom_adj, selected_tasksize);
@@ -197,39 +175,11 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
 	}
-	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
-		     sc->nr_to_scan, sc->gfp_mask, rem);
+	lowmem_print(4, "lowmem_shrink %d, %x, return %d\n",
+		     nr_to_scan, gfp_mask, rem);
 	read_unlock(&tasklist_lock);
 	return rem;
 }
-
-/* This will provide a true status based off minfree calculation of free ram
- * There are two numbers free_file and free_other as calculated above
- */
-static int param_get_minfree_stat(char *buffer, struct kernel_param *kp)
-{
-	int other_free = global_page_state(NR_FREE_PAGES);
-	int other_file = global_page_state(NR_FILE_PAGES) -
-	                 global_page_state(NR_SHMEM);
-	
-#ifdef CONFIG_SWAP
-	if(fudgeswap != 0){
-		struct sysinfo si;
-		si_swapinfo(&si);
-		
-		if(si.freeswap > 0){
-			if(fudgeswap > si.freeswap)
-				other_file += si.freeswap;
-			else
-				other_file += fudgeswap;
-		}
-	}
-#endif
-	return sprintf(buffer,"other_free:  %d kB\nother_file:  %d kB",
-	               other_free << (PAGE_SHIFT - 10),
-	               other_file << (PAGE_SHIFT - 10));
-}
-module_param_call(minfree_stat, NULL, param_get_minfree_stat, NULL, S_IRUGO);
 
 static struct shrinker lowmem_shrinker = {
 	.shrink = lowmem_shrink,
@@ -255,10 +205,6 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
-#ifdef CONFIG_SWAP
-module_param_named(fudgeswap, fudgeswap, int, 
-                    S_IRUGO | S_IWUSR);
-#endif
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

@@ -42,8 +42,6 @@
 #include <asm/mach/irq.h>
 #include <asm/mach/time.h>
 
-#include <asm/perftypes.h>
-
 /*
  * No architecture-specific irq_finish function defined in arm/arch/irqs.h.
  */
@@ -114,16 +112,15 @@ unlock:
 }
 
 /*
- * handle_IRQ handles all hardware IRQ's.  Decoded IRQs should
- * not come via this function.  Instead, they should provide their
- * own 'handler'.  Used by platform code implementing C-based 1st
- * level decoding.
+ * do_IRQ handles all hardware IRQ's.  Decoded IRQs should not
+ * come via this function.  Instead, they should provide their
+ * own 'handler'
  */
-void handle_IRQ(unsigned int irq, struct pt_regs *regs)
+asmlinkage void __exception_irq_entry
+asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
 {
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
-	perf_mon_interrupt_in();
 	irq_enter();
 
 	/*
@@ -143,16 +140,6 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 
 	irq_exit();
 	set_irq_regs(old_regs);
-	perf_mon_interrupt_out();
-}
-
-/*
- * asm_do_IRQ is the interface to be used from assembly code.
- */
-asmlinkage void __exception_irq_entry
-asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
-{
-	handle_IRQ(irq, regs);
 }
 
 void set_irq_flags(unsigned int irq, unsigned int iflags)

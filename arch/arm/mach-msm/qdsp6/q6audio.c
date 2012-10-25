@@ -394,7 +394,7 @@ static int audio_out_open(struct audio_client *ac, uint32_t bufsz,
 	return audio_ioctl(ac, &rpc, sizeof(rpc));
 }
 
-#if 0 
+#if 0
 static int audio_in_open(struct audio_client *ac, uint32_t bufsz,
 			 uint32_t rate, uint32_t channels)
 {
@@ -445,6 +445,7 @@ static int audio_in_open(struct audio_client *ac, uint32_t bufsz,
         return audio_ioctl(ac, &rpc, sizeof(rpc));
 }
 #endif
+
 
 static int audio_mp3_open(struct audio_client *ac, uint32_t bufsz,
 			  uint32_t rate, uint32_t channels)
@@ -1450,14 +1451,16 @@ done:
 
 static void adie_rx_path_enable(uint32_t acdb_id)
 {
-	adie_enable();
-	adie_set_path(adie, audio_rx_path_id, ADIE_PATH_RX);
-	adie_set_path_freq_plan(adie, ADIE_PATH_RX, 48000);
+        if (audio_rx_path_id) {
+                adie_enable();
+                adie_set_path(adie, audio_rx_path_id, ADIE_PATH_RX);
+                adie_set_path_freq_plan(adie, ADIE_PATH_RX, 48000);
 
-	adie_proceed_to_stage(adie, ADIE_PATH_RX,
-			ADIE_STAGE_DIGITAL_READY);
-	adie_proceed_to_stage(adie, ADIE_PATH_RX,
-			ADIE_STAGE_DIGITAL_ANALOG_READY);
+                adie_proceed_to_stage(adie, ADIE_PATH_RX,
+                                ADIE_STAGE_DIGITAL_READY);
+                adie_proceed_to_stage(adie, ADIE_PATH_RX,
+                                ADIE_STAGE_DIGITAL_ANALOG_READY);
+        }
 }
 
 static void q6_rx_path_enable(int reconf, uint32_t acdb_id)
@@ -1487,7 +1490,7 @@ struct audio_client *q6audio_open_pcm(uint32_t bufsz, uint32_t rate,
 	ac->flags = flags;
 
 	mutex_lock(&audio_path_lock);
-#if  0
+#if 0
 	if (ac->flags & AUDIO_FLAG_WRITE) {
 		audio_rx_path_refcount++;
 		if (audio_rx_path_refcount == 1) {
@@ -1710,4 +1713,3 @@ int q6fm_close(struct audio_client *ac)
 	audio_client_free(ac);
 	return 0;
 }
-

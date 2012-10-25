@@ -20,6 +20,9 @@
 
 #include <mach/board.h>
 
+#define BRAVO_MIN_UV_MV	800
+#define BRAVO_MAX_UV_MV	1350
+
 #define MSM_SMI_BASE		0x02B00000
 #define MSM_SMI_SIZE		0x01500000
 
@@ -181,9 +184,5 @@
 */
 
 #define is_cdma_version(rev) (rev == 0x05)
-
-#define BRAVO_TPS65023_MIN_UV_MV    (1000)
-#define BRAVO_TPS65023_STABLE_UV_MV    (1300)
-#define BRAVO_TPS65023_MAX_UV_MV    (1325)
 
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_BRAVO_H */

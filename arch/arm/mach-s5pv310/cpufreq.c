@@ -458,7 +458,8 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 }
 
 #ifdef CONFIG_PM
-static int s5pv310_cpufreq_suspend(struct cpufreq_policy *policy)
+static int s5pv310_cpufreq_suspend(struct cpufreq_policy *policy,
+				   pm_message_t pmsg)
 {
 	return 0;
 }

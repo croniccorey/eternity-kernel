@@ -655,7 +655,7 @@ static void msmfb_resume(struct work_struct *work)
 
 static int msmfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
-	uint32_t size;
+	u32 size;
 
 	if ((var->xres != info->var.xres) ||
 	    (var->yres != info->var.yres) ||
@@ -977,7 +977,7 @@ static struct file_operations debug_fops = {
 };
 #endif
 
-#define BITS_PER_PIXEL_DEF 32
+#define BITS_PER_PIXEL_DEF 16
 
 static void setup_fb_info(struct msmfb_info *msmfb)
 {
@@ -1003,7 +1003,6 @@ static void setup_fb_info(struct msmfb_info *msmfb)
 	fb_info->var.yres_virtual = msmfb->yres * 2;
 	fb_info->var.bits_per_pixel = BITS_PER_PIXEL_DEF;
 	fb_info->var.accel_flags = 0;
-	fb_info->var.reserved[4] = 60;
 
 	fb_info->var.yoffset = 0;
 

@@ -634,6 +634,9 @@ static inline int devtmpfs_mount(const char *mountpoint) { return 0; }
 /* drivers/base/power/shutdown.c */
 extern void device_shutdown(void);
 
+/* drivers/base/sys.c */
+extern void sysdev_shutdown(void);
+
 /* debugging and troubleshooting/diagnostic helpers. */
 extern const char *dev_driver_string(const struct device *dev);
 

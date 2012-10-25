@@ -84,8 +84,8 @@ unsigned int __read_mostly sysctl_sched_compat_yield;
  * and reduces their over-scheduling. Synchronous workloads will still
  * have immediate wakeup/sleep latencies.
  */
-unsigned int sysctl_sched_wakeup_granularity = 25000UL;
-unsigned int normalized_sysctl_sched_wakeup_granularity = 25000UL;
+unsigned int sysctl_sched_wakeup_granularity = 1000000UL;
+unsigned int normalized_sysctl_sched_wakeup_granularity = 1000000UL;
 
 const_debug unsigned int sysctl_sched_migration_cost = 500000UL;
 
@@ -944,7 +944,7 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 		vruntime += sched_vslice(cfs_rq, se);
 
 	/* sleeps up to a single latency don't count. */
-	if (!initial) {
+	if (sched_feat(FAIR_SLEEPERS) && !initial) {
 		unsigned long thresh = sysctl_sched_latency;
 
 		/*

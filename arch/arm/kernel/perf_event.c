@@ -19,7 +19,6 @@
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
-#include <linux/irq.h>
 
 #include <asm/cputype.h>
 #include <asm/irq.h>
@@ -72,10 +71,6 @@ struct arm_pmu {
 	enum arm_perf_pmu_ids id;
 	const char	*name;
 	irqreturn_t	(*handle_irq)(int irq_num, void *dev);
-#ifdef CONFIG_SMP
-	void            (*secondary_enable)(unsigned int irq);
-	void            (*secondary_disable)(unsigned int irq);
-#endif
 	void		(*enable)(struct hw_perf_event *evt, int idx);
 	void		(*disable)(struct hw_perf_event *evt, int idx);
 	int		(*get_event_idx)(struct cpu_hw_events *cpuc,
@@ -209,9 +204,10 @@ armpmu_event_set_period(struct perf_event *event,
 static u64
 armpmu_event_update(struct perf_event *event,
 		    struct hw_perf_event *hwc,
-		    int idx, int overflow)
+		    int idx)
 {
-	u64 prev_raw_count, new_raw_count;
+	int shift = 64 - 32;
+	s64 prev_raw_count, new_raw_count;
 	u64 delta;
 
 again:
@@ -222,13 +218,8 @@ again:
 			     new_raw_count) != prev_raw_count)
 		goto again;
 
-	new_raw_count &= armpmu->max_period;
-	prev_raw_count &= armpmu->max_period;
-
-	if (overflow)
-		delta = armpmu->max_period - prev_raw_count + new_raw_count;
-	else
-		delta = new_raw_count - prev_raw_count;
+	delta = (new_raw_count << shift) - (prev_raw_count << shift);
+	delta >>= shift;
 
 	local64_add(delta, &event->count);
 	local64_sub(delta, &hwc->period_left);
@@ -245,7 +236,7 @@ armpmu_read(struct perf_event *event)
 	if (hwc->idx < 0)
 		return;
 
-	armpmu_event_update(event, hwc, hwc->idx, 0);
+	armpmu_event_update(event, hwc, hwc->idx);
 }
 
 static void
@@ -263,7 +254,7 @@ armpmu_stop(struct perf_event *event, int flags)
 	if (!(hwc->state & PERF_HES_STOPPED)) {
 		armpmu->disable(hwc, hwc->idx);
 		barrier(); /* why? */
-		armpmu_event_update(event, hwc, hwc->idx, 0);
+		armpmu_event_update(event, hwc, hwc->idx);
 		hwc->state |= PERF_HES_STOPPED | PERF_HES_UPTODATE;
 	}
 }
@@ -416,10 +407,6 @@ armpmu_reserve_hardware(void)
 			pr_warning("unable to request IRQ%d for ARM perf "
 				"counters\n", irq);
 			break;
-#ifdef CONFIG_SMP
-		} else if (armpmu->secondary_enable) {
-			armpmu->secondary_enable(irq);
-#endif
 		}
 	}
 
@@ -443,13 +430,8 @@ armpmu_release_hardware(void)
 
 	for (i = pmu_device->num_resources - 1; i >= 0; --i) {
 		irq = platform_get_irq(pmu_device, i);
-		if (irq >= 0) {
+		if (irq >= 0)
 			free_irq(irq, NULL);
-#ifdef CONFIG_SMP
-			if (armpmu->secondary_disable)
-				armpmu->secondary_disable(irq);
-#endif
-		}
 	}
 	armpmu->stop();
 
@@ -626,10 +608,6 @@ static struct pmu pmu = {
 #include "perf_event_xscale.c"
 #include "perf_event_v6.c"
 #include "perf_event_v7.c"
-#include "perf_event_msm.c"
-#include "perf_event_msm_l2.c"
-#include "perf_event_msm_krait.c"
-#include "perf_event_msm_krait_l2.c"
 
 static int __init
 init_hw_perf_events(void)
@@ -665,22 +643,6 @@ init_hw_perf_events(void)
 			break;
 		case 2:
 			armpmu = xscale2pmu_init();
-			break;
-		}
-	/* Qualcomm CPUs */
-	} else if (0x51 == implementor) {
-		switch (part_number) {
-		case 0x00F0:    /* 8x50 & 7x30*/
-			armpmu = armv7_scorpion_pmu_init();
-			break;
-		case 0x02D0:    /* 8x60 */
-			armpmu = armv7_scorpionmp_pmu_init();
-			scorpionmp_l2_pmu_init();
-			break;
-		case 0x0490:    /* 8960 sim */
-		case 0x04D0:    /* 8960 */
-			armpmu = armv7_krait_pmu_init();
-			krait_l2_pmu_init();
 			break;
 		}
 	}
@@ -752,8 +714,7 @@ perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 
 	tail = (struct frame_tail __user *)regs->ARM_fp - 1;
 
-	while ((entry->nr < PERF_MAX_STACK_DEPTH) &&
-	tail && !((unsigned long)tail & 0x3))
+	while (tail && !((unsigned long)tail & 0x3))
 		tail = user_backtrace(tail, entry);
 }
 

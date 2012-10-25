@@ -960,8 +960,6 @@ int invalidate_inode_page(struct page *page);
 #ifdef CONFIG_MMU
 extern int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			unsigned long address, unsigned int flags);
-extern int fixup_user_fault(struct task_struct *tsk, struct mm_struct *mm,
-			    unsigned long address, unsigned int fault_flags);
 #else
 static inline int handle_mm_fault(struct mm_struct *mm,
 			struct vm_area_struct *vma, unsigned long address,
@@ -970,14 +968,6 @@ static inline int handle_mm_fault(struct mm_struct *mm,
 	/* should never happen if there's no MMU */
 	BUG();
 	return VM_FAULT_SIGBUS;
-}
-static inline int fixup_user_fault(struct task_struct *tsk,
-		struct mm_struct *mm, unsigned long address,
-		unsigned int fault_flags)
-{
-	/* should never happen if there's no MMU */
-	BUG();
-	return -EFAULT;
 }
 #endif
 
@@ -1157,24 +1147,13 @@ static inline void sync_mm_rss(struct task_struct *task, struct mm_struct *mm)
 #endif
 
 /*
- * This struct is used to pass information from page reclaim to the shrinkers.
- * We consolidate the values for easier extention later.
- */
-struct shrink_control {
-	gfp_t gfp_mask;
-
-	/* How many slab objects shrinker() should scan and try to reclaim */
-	unsigned long nr_to_scan;
-};
-
-/*
  * A callback you can register to apply pressure to ageable caches.
  *
- * 'sc' is passed shrink_control which includes a count 'nr_to_scan'
- * and a 'gfpmask'.  It should look through the least-recently-used
- * 'nr_to_scan' entries and attempt to free them up.  It should return
- * the number of objects which remain in the cache.  If it returns -1, it means
- * it cannot do any scanning at this time (eg. there is a risk of deadlock).
+ * 'shrink' is passed a count 'nr_to_scan' and a 'gfpmask'.  It should
+ * look through the least-recently-used 'nr_to_scan' entries and
+ * attempt to free them up.  It should return the number of objects
+ * which remain in the cache.  If it returns -1, it means it cannot do
+ * any scanning at this time (eg. there is a risk of deadlock).
  *
  * The 'gfpmask' refers to the allocation we are currently trying to
  * fulfil.
@@ -1183,7 +1162,7 @@ struct shrink_control {
  * querying the cache size, so a fastpath for that case is appropriate.
  */
 struct shrinker {
-	int (*shrink)(struct shrinker *, struct shrink_control *sc);
+	int (*shrink)(struct shrinker *, int nr_to_scan, gfp_t gfp_mask);
 	int seeks;	/* seeks to recreate an obj */
 
 	/* These are for internal use */
@@ -1500,7 +1479,7 @@ int write_one_page(struct page *page, int wait);
 void task_dirty_inc(struct task_struct *tsk);
 
 /* readahead.c */
-#define VM_MAX_READAHEAD	2048	/* kbytes */
+#define VM_MAX_READAHEAD	1040	/* kbytes */
 #define VM_MIN_READAHEAD	16	/* kbytes (includes current page) */
 
 int force_page_cache_readahead(struct address_space *mapping, struct file *filp,
@@ -1631,9 +1610,8 @@ int in_gate_area_no_task(unsigned long addr);
 
 int drop_caches_sysctl_handler(struct ctl_table *, int,
 					void __user *, size_t *, loff_t *);
-unsigned long shrink_slab(struct shrink_control *shrink,
-			  unsigned long nr_pages_scanned,
-			  unsigned long lru_pages);
+unsigned long shrink_slab(unsigned long scanned, gfp_t gfp_mask,
+			unsigned long lru_pages);
 
 #ifndef CONFIG_MMU
 #define randomize_va_space 0

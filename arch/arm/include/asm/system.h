@@ -69,8 +69,6 @@
 #define __exception_irq_entry	__exception
 #endif
 
-void cpu_idle_wait(void);
-
 struct thread_info;
 struct task_struct;
 

@@ -890,7 +890,7 @@ static int do_write(struct fsg_common *common)
 	int			rc;
 
 #ifdef CONFIG_USB_CSW_HACK
-	int	i;
+	int			i;
 #endif
 	if (curlun->ro) {
 		curlun->sense_data = SS_WRITE_PROTECTED;

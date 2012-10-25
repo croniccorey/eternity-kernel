@@ -413,16 +413,15 @@ static struct futex_q *futex_top_waiter(struct futex_hash_bucket *hb,
 	return NULL;
 }
 
-static int cmpxchg_futex_value_locked(u32 *curval, u32 __user *uaddr,
-				      u32 uval, u32 newval)
+static u32 cmpxchg_futex_value_locked(u32 __user *uaddr, u32 uval, u32 newval)
 {
-	int ret;
+	u32 curval;
 
 	pagefault_disable();
-	ret = futex_atomic_cmpxchg_inatomic(curval, uaddr, uval, newval);
+	curval = futex_atomic_cmpxchg_inatomic(uaddr, uval, newval);
 	pagefault_enable();
 
-	return ret;
+	return curval;
 }
 
 static int get_futex_value_locked(u32 *dest, u32 __user *from)
@@ -707,7 +706,7 @@ static int futex_lock_pi_atomic(u32 __user *uaddr, struct futex_hash_bucket *hb,
 				struct task_struct *task, int set_waiters)
 {
 	int lock_taken, ret, ownerdied = 0;
-	u32 uval, newval, curval, vpid = task_pid_vnr(task);
+	u32 uval, newval, curval;
 
 retry:
 	ret = lock_taken = 0;
@@ -717,17 +716,19 @@ retry:
 	 * (by doing a 0 -> TID atomic cmpxchg), while holding all
 	 * the locks. It will most likely not succeed.
 	 */
-	newval = vpid;
+	newval = task_pid_vnr(task);
 	if (set_waiters)
 		newval |= FUTEX_WAITERS;
 
-	if (unlikely(cmpxchg_futex_value_locked(&curval, uaddr, 0, newval)))
+	curval = cmpxchg_futex_value_locked(uaddr, 0, newval);
+
+	if (unlikely(curval == -EFAULT))
 		return -EFAULT;
 
 	/*
 	 * Detect deadlocks.
 	 */
-	if ((unlikely((curval & FUTEX_TID_MASK) == vpid)))
+	if ((unlikely((curval & FUTEX_TID_MASK) == task_pid_vnr(task))))
 		return -EDEADLK;
 
 	/*
@@ -754,12 +755,14 @@ retry:
 	 */
 	if (unlikely(ownerdied || !(curval & FUTEX_TID_MASK))) {
 		/* Keep the OWNER_DIED bit */
-		newval = (curval & ~FUTEX_TID_MASK) | vpid;
+		newval = (curval & ~FUTEX_TID_MASK) | task_pid_vnr(task);
 		ownerdied = 0;
 		lock_taken = 1;
 	}
 
-	if (unlikely(cmpxchg_futex_value_locked(&curval, uaddr, uval, newval)))
+	curval = cmpxchg_futex_value_locked(uaddr, uval, newval);
+
+	if (unlikely(curval == -EFAULT))
 		return -EFAULT;
 	if (unlikely(curval != uval))
 		goto retry;
@@ -872,7 +875,9 @@ static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_q *this)
 
 		newval = FUTEX_WAITERS | task_pid_vnr(new_owner);
 
-		if (cmpxchg_futex_value_locked(&curval, uaddr, uval, newval))
+		curval = cmpxchg_futex_value_locked(uaddr, uval, newval);
+
+		if (curval == -EFAULT)
 			ret = -EFAULT;
 		else if (curval != uval)
 			ret = -EINVAL;
@@ -907,8 +912,10 @@ static int unlock_futex_pi(u32 __user *uaddr, u32 uval)
 	 * There is no waiter, so we unlock the futex. The owner died
 	 * bit has not to be preserved here. We are the owner:
 	 */
-	if (cmpxchg_futex_value_locked(&oldval, uaddr, uval, 0))
-		return -EFAULT;
+	oldval = cmpxchg_futex_value_locked(uaddr, uval, 0);
+
+	if (oldval == -EFAULT)
+		return oldval;
 	if (oldval != uval)
 		return -EAGAIN;
 
@@ -1603,7 +1610,9 @@ retry:
 	while (1) {
 		newval = (uval & FUTEX_OWNER_DIED) | newtid;
 
-		if (cmpxchg_futex_value_locked(&curval, uaddr, uval, newval))
+		curval = cmpxchg_futex_value_locked(uaddr, uval, newval);
+
+		if (curval == -EFAULT)
 			goto handle_fault;
 		if (curval == uval)
 			break;
@@ -2069,9 +2078,9 @@ static int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
 {
 	struct futex_hash_bucket *hb;
 	struct futex_q *this, *next;
+	u32 uval;
 	struct plist_head *head;
 	union futex_key key = FUTEX_KEY_INIT;
-	u32 uval, vpid = task_pid_vnr(current);
 	int ret;
 
 retry:
@@ -2080,7 +2089,7 @@ retry:
 	/*
 	 * We release only a lock we actually own:
 	 */
-	if ((uval & FUTEX_TID_MASK) != vpid)
+	if ((uval & FUTEX_TID_MASK) != task_pid_vnr(current))
 		return -EPERM;
 
 	ret = get_futex_key(uaddr, flags & FLAGS_SHARED, &key);
@@ -2095,14 +2104,17 @@ retry:
 	 * again. If it succeeds then we can return without waking
 	 * anyone else up:
 	 */
-	if (!(uval & FUTEX_OWNER_DIED) &&
-	    cmpxchg_futex_value_locked(&uval, uaddr, vpid, 0))
+	if (!(uval & FUTEX_OWNER_DIED))
+		uval = cmpxchg_futex_value_locked(uaddr, task_pid_vnr(current), 0);
+
+
+	if (unlikely(uval == -EFAULT))
 		goto pi_faulted;
 	/*
 	 * Rare case: we managed to release the lock atomically,
 	 * no need to wake anyone else up:
 	 */
-	if (unlikely(uval == vpid))
+	if (unlikely(uval == task_pid_vnr(current)))
 		goto out_unlock;
 
 	/*
@@ -2483,7 +2495,9 @@ retry:
 		 * userspace.
 		 */
 		mval = (uval & FUTEX_WAITERS) | FUTEX_OWNER_DIED;
-		if (futex_atomic_cmpxchg_inatomic(&nval, uaddr, uval, mval))
+		nval = futex_atomic_cmpxchg_inatomic(uaddr, uval, mval);
+
+		if (nval == -EFAULT)
 			return -1;
 
 		if (nval != uval)
@@ -2696,7 +2710,8 @@ static int __init futex_init(void)
 	 * implementation, the non-functional ones will return
 	 * -ENOSYS.
 	 */
-	if (cmpxchg_futex_value_locked(&curval, NULL, 0, 0) == -EFAULT)
+	curval = cmpxchg_futex_value_locked(NULL, 0, 0);
+	if (curval == -EFAULT)
 		futex_cmpxchg_enabled = 1;
 
 	for (i = 0; i < ARRAY_SIZE(futex_queues); i++) {

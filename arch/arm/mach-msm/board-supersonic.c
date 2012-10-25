@@ -45,7 +45,6 @@
 #include <mach/htc_battery.h>
 #include <mach/msm_serial_debugger.h>
 #include <mach/system.h>
-#include <mach/socinfo.h>
 #include <linux/spi/spi.h>
 
 #include "board-supersonic.h"
@@ -72,10 +71,6 @@
 #include <mach/msm_hsusb.h>
 
 #include "board-supersonic-tpa2018d1.h"
-
-#include <linux/msm_kgsl.h>
-#include <linux/regulator/machine.h>
-#include "footswitch.h"
 
 #define SMEM_SPINLOCK_I2C	   6
 
@@ -522,61 +517,56 @@ static struct spi_platform_data supersonic_spi_pdata = {
 	.clk_rate	= 1200000,
 };
 
-/* start kgsl */
-static struct resource kgsl_3d0_resources[] = {
+static struct resource msm_kgsl_resources[] = {
 	{
-		.name  = KGSL_3D0_REG_MEMORY,
-		.start = 0xA0000000,
-		.end = 0xA001ffff,
-		.flags = IORESOURCE_MEM,
+		.name	= "kgsl_reg_memory",
+		.start	= MSM_GPU_REG_PHYS,
+		.end	= MSM_GPU_REG_PHYS + MSM_GPU_REG_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name = KGSL_3D0_IRQ,
-		.start = INT_GRAPHICS,
-		.end = INT_GRAPHICS,
-		.flags = IORESOURCE_IRQ,
+		.name	= "kgsl_phys_memory",
+		.start	= MSM_GPU_MEM_BASE,
+		.end	= MSM_GPU_MEM_BASE + MSM_GPU_MEM_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_GRAPHICS,
+		.end	= INT_GRAPHICS,
+		.flags	= IORESOURCE_IRQ,
 	},
 };
 
-static struct kgsl_device_platform_data kgsl_3d0_pdata = {
-	.pwrlevel = {
-		{
-			.gpu_freq = 0,
-			.bus_freq = 128000000,
-		},
-	},
-	.init_level = 0,
-	.num_levels = 1,
-	.set_grp_async = NULL,
-	.idle_timeout = HZ/5,
-	.clk_map = KGSL_CLK_GRP | KGSL_CLK_IMEM,
-};
+#define PWR_RAIL_GRP_CLK		8
+static int supersonic_kgsl_power_rail_mode(int follow_clk)
+{
+	int mode = follow_clk ? 0 : 1;
+	int rail_id = PWR_RAIL_GRP_CLK;
 
-struct platform_device msm_kgsl_3d0 = {
-	.name = "kgsl-3d0",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
-	.resource = kgsl_3d0_resources,
-	.dev = {
-		.platform_data = &kgsl_3d0_pdata,
-	},
-};
-/* end kgsl */
+	return msm_proc_comm(PCOM_CLKCTL_RPC_RAIL_CONTROL, &rail_id, &mode);
+}
 
-/* start footswitch regulator */
-struct platform_device *msm_footswitch_devices[] = {
-	FS_PCOM(FS_GFX3D,  "fs_gfx3d"),
-};
+static int supersonic_kgsl_power(bool on)
+{
+	int cmd;
+	int rail_id = PWR_RAIL_GRP_CLK;
 
-unsigned msm_num_footswitch_devices = ARRAY_SIZE(msm_footswitch_devices);
-/* end footswitch regulator */
+	cmd = on ? PCOM_CLKCTL_RPC_RAIL_ENABLE : PCOM_CLKCTL_RPC_RAIL_DISABLE;
+	return msm_proc_comm(cmd, &rail_id, NULL);
+}
+
+static struct platform_device msm_kgsl_device = {
+	.name		= "kgsl",
+	.id		= -1,
+	.resource	= msm_kgsl_resources,
+	.num_resources	= ARRAY_SIZE(msm_kgsl_resources),
+};
 
 static struct android_pmem_platform_data mdp_pmem_pdata = {
 	.name		= "pmem",
 	.start		= MSM_PMEM_MDP_BASE,
 	.size		= MSM_PMEM_MDP_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_ALLORNOTHING,
+	.no_allocator	= 0,
 	.cached		= 1,
 };
 
@@ -584,8 +574,7 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.name		= "pmem_adsp",
 	.start		= MSM_PMEM_ADSP_BASE,
 	.size		= MSM_PMEM_ADSP_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator	= 0,
 	.cached		= 1,
 };
 
@@ -593,18 +582,17 @@ static struct android_pmem_platform_data android_pmem_venc_pdata = {
 	.name		= "pmem_venc",
 	.start		= MSM_PMEM_VENC_BASE,
 	.size		= MSM_PMEM_VENC_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator	= 0,
 	.cached		= 1,
 };
+
 
 #ifdef CONFIG_BUILD_CIQ
 static struct android_pmem_platform_data android_pmem_ciq_pdata = {
 	.name = "pmem_ciq",
 	.start = MSM_PMEM_CIQ_BASE,
 	.size = MSM_PMEM_CIQ_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator = 0,
 	.cached = 0,
 };
 
@@ -612,8 +600,7 @@ static struct android_pmem_platform_data android_pmem_ciq1_pdata = {
 	.name = "pmem_ciq1",
 	.start = MSM_PMEM_CIQ1_BASE,
 	.size = MSM_PMEM_CIQ1_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator = 0,
 	.cached = 0,
 };
 
@@ -621,8 +608,7 @@ static struct android_pmem_platform_data android_pmem_ciq2_pdata = {
 	.name = "pmem_ciq2",
 	.start = MSM_PMEM_CIQ2_BASE,
 	.size = MSM_PMEM_CIQ2_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator = 0,
 	.cached = 0,
 };
 
@@ -630,8 +616,7 @@ static struct android_pmem_platform_data android_pmem_ciq3_pdata = {
 	.name = "pmem_ciq3",
 	.start = MSM_PMEM_CIQ3_BASE,
 	.size = MSM_PMEM_CIQ3_SIZE,
-/*	.no_allocator	= 0,*/
-	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.no_allocator = 0,
 	.cached = 0,
 };
 #endif
@@ -816,8 +801,8 @@ static struct regulator_init_data tps65023_data[5] = {
 	{
 		.constraints = {
 			.name = "dcdc1", /* VREG_MSMC2_1V29 */
-			.min_uV = 975000,
-			.max_uV = 1300000,
+			.min_uV = SUPERSONIC_MIN_UV_MV * 1000,
+			.max_uV = SUPERSONIC_MAX_UV_MV * 1000,
 			.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
 		},
 		.consumer_supplies = tps65023_dcdc1_supplies,
@@ -1469,7 +1454,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_camera_sensor_s5k3h1,
 	&msm_camera_sensor_ov8810,
 	&msm_camera_sensor_s5k6aafx,
-	&msm_kgsl_3d0,
+	&msm_kgsl_device,
 	&msm_device_i2c,
 	&msm_camera_sensor_ov9665,
 	&supersonic_flashlight_device,
@@ -1507,8 +1492,8 @@ static struct msm_acpu_clock_platform_data supersonic_clock_data = {
 	.acpu_switch_time_us	= 20,
 	.max_speed_delta_khz	= 256000,
 	.vdd_switch_time_us	= 62,
-	.power_collapse_khz	= 245000,
-	.wait_for_irq_khz	= 245000,
+	.power_collapse_khz	= 128000,
+	.wait_for_irq_khz	= 128000,
 };
 
 int supersonic_init_mmc(int sysrev);
@@ -1594,6 +1579,11 @@ static void __init supersonic_init(void)
 				  &msm_device_uart1.dev, 1, MSM_GPIO_TO_INT(SUPERSONIC_GPIO_UART1_RX));
 #endif
 
+	/* set the gpu power rail to manual mode so clk en/dis will not
+	 * turn off gpu power, and hang it on resume */
+	supersonic_kgsl_power_rail_mode(0);
+	supersonic_kgsl_power(true);
+
 #ifdef CONFIG_SPI_QSD
 	msm_device_spi.dev.platform_data = &supersonic_spi_pdata;
 #endif
@@ -1613,10 +1603,6 @@ static void __init supersonic_init(void)
 #endif
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
-
-	platform_add_devices(msm_footswitch_devices,
-			msm_num_footswitch_devices);
-
 	if (!opt_usb_h2w_sw) {
 		msm_device_hsusb.dev.platform_data = &msm_hsusb_pdata;
 		config_supersonic_usb_id_gpios(0);
@@ -1659,8 +1645,6 @@ static void __init supersonic_map_io(void)
 {
 	msm_map_qsd8x50_io();
 	msm_clock_init(msm_clocks_8x50, msm_num_clocks_8x50);
-	if (socinfo_init() < 0)
-		printk(KERN_ERR "%s: socinfo_init() failed!\n",__func__);
 }
 
 extern struct sys_timer msm_timer;

@@ -56,22 +56,12 @@ enum {
 #define MDP_TRANSP_NOP	0xffffffff
 #define MDP_ALPHA_NOP	0xff
 
-/* drewis: added for android 4.0 */
-#define MDP_BLIT_NON_CACHED		0x01000000
-/* drewis: end */
-
 struct mdp_rect {
-	uint32_t x;
-	uint32_t y;
-	uint32_t w;
-	uint32_t h;
+	u32 x, y, w, h;
 };
 
 struct mdp_img {
-	uint32_t width;
-	uint32_t height;
-	uint32_t format;
-	uint32_t offset;
+	u32 width, height, format, offset;
 	int memory_id;		/* the file descriptor */
 };
 
@@ -80,13 +70,11 @@ struct mdp_blit_req {
 	struct mdp_img dst;
 	struct mdp_rect src_rect;
 	struct mdp_rect dst_rect;
-	uint32_t alpha;
-	uint32_t transp_mask;
-	uint32_t flags;
+	u32 alpha, transp_mask, flags;
 };
 
 struct mdp_blit_req_list {
-	uint32_t count;
+	u32 count;
 	struct mdp_blit_req req[];
 };
 

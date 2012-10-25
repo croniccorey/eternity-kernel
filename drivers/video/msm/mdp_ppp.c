@@ -16,6 +16,7 @@
 #include <linux/file.h>
 #include <linux/delay.h>
 #include <linux/major.h>
+#include <linux/msm_hw3d.h>
 #include <linux/msm_mdp.h>
 #include <linux/mutex.h>
 #include <linux/android_pmem.h>
@@ -412,7 +413,6 @@ static void flush_imgs(struct mdp_blit_req *req, struct ppp_regs *regs,
 #ifdef CONFIG_ANDROID_PMEM
 	uint32_t src0_len, src1_len, dst0_len, dst1_len;
 
-	if (!(req->flags & MDP_BLIT_NON_CACHED)) {
 	/* flush src images to memory before dma to mdp */
 	get_len(&req->src, &req->src_rect, regs->src_bpp, &src0_len,
 		&src1_len);
@@ -428,7 +428,6 @@ static void flush_imgs(struct mdp_blit_req *req, struct ppp_regs *regs,
 	if (IS_PSEUDOPLNR(req->dst.format))
 		flush_pmem_file(dst_file, req->dst.offset + dst0_len,
 				dst1_len);
-	}
 #endif
 }
 
@@ -700,6 +699,9 @@ static int get_img(struct mdp_img *img, struct fb_info *info,
 	
 	if (!get_pmem_file(img->memory_id, start, &vstart, len, filep))
 		return 0;
+	else if (!get_msm_hw3d_file(img->memory_id, &img->offset, start, len,
+				    filep))
+		return 0;
 
 	file = fget_light(img->memory_id, &put_needed);
 	if (file == NULL)
@@ -716,22 +718,14 @@ static int get_img(struct mdp_img *img, struct fb_info *info,
 	return ret;
 }
 
-#if 0
 static void put_img(struct file *file)
 {
 	if (file) {
 		if (is_pmem_file(file))
 			put_pmem_file(file);
+		else if (is_msm_hw3d_file(file))
+			put_msm_hw3d_file(file);
 	}
-}
-#endif
-
-static void put_img(struct file *p_src_file)
-{
-#ifdef CONFIG_ANDROID_PMEM
-	if (p_src_file)
-		put_pmem_file(p_src_file);
-#endif
 }
 
 static void dump_req(struct mdp_blit_req *req,

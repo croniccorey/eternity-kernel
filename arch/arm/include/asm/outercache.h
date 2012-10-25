@@ -31,7 +31,6 @@ struct outer_cache_fns {
 #ifdef CONFIG_OUTER_CACHE_SYNC
 	void (*sync)(void);
 #endif
-	void (*set_debug)(unsigned long);
 };
 
 #ifdef CONFIG_OUTER_CACHE

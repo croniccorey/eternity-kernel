@@ -65,10 +65,6 @@
 #include <linux/slab.h>
 #include <linux/kthread.h>
 
-#ifdef CONFIG_CPU_FREQ_VDD_LEVELS
-#include "board-bravo.h"
-#endif
-
 #include "avs.h"
 
 #define AVSDSCR_INPUT 0x01004860 /* magic # from circuit designer */
@@ -95,106 +91,84 @@ static struct avs_state_s
 } avs_state;
 
 struct clkctl_acpu_speed {
-  unsigned	acpu_khz;
-  int		min_vdd;
-  int		max_vdd;
-  int		max_vdd_hard_limit;	// Voltage that must never be beaten
-  unsigned	ignore;	// Set to 1 if this frequency is to be ignored
+	unsigned acpu_khz;
+	int	 min_vdd;
+	int	 max_vdd;
 };
 
 #ifndef MAX
-# define	MAX(A,B)	(A>B?A:B)
-#endif // !def MAX
-#ifndef MIN
-# define	MIN(A,B)	(A<B?A:B)
-#endif // !def MIN
+#define MAX(A,B) (A>B?A:B)
+#endif
 
 struct clkctl_acpu_speed acpu_vdd_tbl[] = {
-  {  19200, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 175000, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  { 245000, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  /* Work arround for acpu resume hung, GPLL is turn off by arm9 */
-  /*{ 256000, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },*/
-  { 400000, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 450000, VOLTAGE_MIN_START, VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 500000, MAX(VOLTAGE_MIN_START,1075), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  { 550000, MAX(VOLTAGE_MIN_START,1100), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 600000, MAX(VOLTAGE_MIN_START,1125), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 700000, MAX(VOLTAGE_MIN_START,1200), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 750000, MAX(VOLTAGE_MIN_START,1200), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  { 850000, MAX(VOLTAGE_MIN_START,1250), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  { 900000, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 1 },
-  { 950000, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_MAX_SAFE, VOLTAGE_STABLE, 0 },
-  { 1000000, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_STABLE, VOLTAGE_STABLE, 0 },
-  { 1050000, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_STABLE, VOLTAGE_STABLE, 1 },
-  { 1100000, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_STABLE, VOLTAGE_STABLE, 0 },
-  { 1150000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_STABLE, VOLTAGE_STABLE, 1 },
-  { 1200000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_STABLE, VOLTAGE_STABLE, 1 },
-  { 1250000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_STABLE, VOLTAGE_STABLE, 0 },
-  { 1300000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_STABLE, VOLTAGE_STABLE, 1 },
-  { 1350000, MAX(VOLTAGE_MIN_START,1325), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-  { 1400000, MAX(VOLTAGE_MIN_START,1325), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1450000, MAX(VOLTAGE_MIN_START,1325), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1500000, MAX(VOLTAGE_MIN_START,1325), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-/* EXPERIMENTAL USE AT YOUR OWN RISK */
-#ifdef CONFIG_EXPERIMENTAL_FREQ_TABLE
-  { 1550000, MAX(VOLTAGE_MIN_START,1350), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1600000, MAX(VOLTAGE_MIN_START,1350), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-  { 1650000, MAX(VOLTAGE_MIN_START,1350), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1700000, MAX(VOLTAGE_MIN_START,1350), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1750000, MAX(VOLTAGE_MIN_START,1350), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-  { 1800000, MAX(VOLTAGE_MIN_START,1375), VOLTAGE_MAX, VOLTAGE_MAX, 1 },
-  { 1850000, MAX(VOLTAGE_MIN_START,1375), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-#endif
-  { 0 },
+	{  19200, VOLTAGE_MIN_START, 950 },
+	{ 128000, VOLTAGE_MIN_START, 975 },
+	{ 245000, VOLTAGE_MIN_START, 975 },
+	{ 384000, VOLTAGE_MIN_START, 975 },
+	{ 422400, VOLTAGE_MIN_START, 975 },
+	{ 460800, VOLTAGE_MIN_START, 975 },
+	{ 499200, MAX(VOLTAGE_MIN_START,900), 1000 },
+	{ 537600, MAX(VOLTAGE_MIN_START,900), 1025 },
+	{ 576000, MAX(VOLTAGE_MIN_START,950), 1050 },
+	{ 614400, MAX(VOLTAGE_MIN_START,950), 1075 },
+	{ 652800, MAX(VOLTAGE_MIN_START,950), 1100 },
+	{ 691200, MAX(VOLTAGE_MIN_START,975), 1125 },
+	{ 729600, MAX(VOLTAGE_MIN_START,975), 1150 },
+	{ 768000, MAX(VOLTAGE_MIN_START,975), 1175 },
+	{ 806400, 1150, 1200 },
+	{ 844800, 1175, 1225 },
+	{ 883200, 1200, 1250 },
+	{ 921600, 1200, 1275 },
+	{ 960000, 1225, 1275 },
+	{ 998400, 1225, 1275 },
+	{ 1036800, 1275, VOLTAGE_MAX },
+	{ 1075200, 1275, VOLTAGE_MAX },
+	{ 1113600, 1275, VOLTAGE_MAX },
+	{ 1152000, 1300, VOLTAGE_MAX },
+	{ 1190400, 1325, VOLTAGE_MAX },
+	{ 1228800, 1350, VOLTAGE_MAX },
+	{ 1267200, 1350, VOLTAGE_MAX },
+	{ 0 },
 };
 
-#if defined(CONFIG_CPU_FREQ_VDD_LEVELS) && defined(CONFIG_MSM_CPU_AVS)
-ssize_t acpuclk_get_vdd_levels_str(char *buf) {
-  int i, len = 0;
-  if (buf) {
-    for (i = 0; acpu_vdd_tbl[i].acpu_khz; i++) {
-      if (acpu_vdd_tbl[i].ignore==0) {
-	len += sprintf(buf + len, "%8u: %4d %4d\n", acpu_vdd_tbl[i].acpu_khz, acpu_vdd_tbl[i].min_vdd, acpu_vdd_tbl[i].max_vdd);
-      }
-    }
-  }
-  return len;
+static int avs_debug = 0;
+module_param(avs_debug, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(avs_debug, "Toggle AVS debug printout");
+
+#ifdef CONFIG_MSM_CPU_AVS
+ssize_t acpuclk_get_vdd_levels_havs_str(char *buf)
+{
+	int i, len = 0;
+
+	if (buf) {
+		for (i = 0; acpu_vdd_tbl[i].acpu_khz; i++) {
+			len += sprintf(buf + len, "%8u: %4d %4d\n", acpu_vdd_tbl[i].acpu_khz, acpu_vdd_tbl[i].min_vdd, acpu_vdd_tbl[i].max_vdd);
+		}
+	}
+
+	return len;
 }
 
-void acpuclk_set_vdd(unsigned acpu_khz, int min_vdd, int max_vdd    ) {
-  int i;
-  min_vdd = min_vdd / 25 * 25;	//! regulator only accepts multiples of 25 (mV)
-  max_vdd=max_vdd/25*25;
-
-  mutex_lock(&avs_lock);
- 
-  for (i = 0; acpu_vdd_tbl[i].acpu_khz; i++) {
-    if (acpu_khz == 0) {
-      acpu_vdd_tbl[i].min_vdd = min(max((acpu_vdd_tbl[i].min_vdd + min_vdd), BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-      acpu_vdd_tbl[i].max_vdd = min(max((acpu_vdd_tbl[i].max_vdd + max_vdd), BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-    } else if (acpu_vdd_tbl[i].acpu_khz == acpu_khz) {
-      acpu_vdd_tbl[i].min_vdd = min(max(min_vdd, BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-      acpu_vdd_tbl[i].max_vdd = min(max(max_vdd, BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-    }
-  }
-
-  /*  for (i = 0; i < TEMPRS*avs_state.freq_cnt; i++) {
-    avs_state.avs_v[i] = VOLTAGE_MAX;
-    }*/
-
-  avs_reset_delays(AVSDSCR_INPUT);
-  avs_set_tscsr(TSCSR_INPUT);
-  //avs_state.changing = 0;
-  //avs_state.freq_idx = -1;
-  //avs_state.vdd = -1;
-  //avs_adjust_freq(freq_idx, 0);
-  
-  mutex_unlock(&avs_lock);
+void acpuclk_set_vdd_havs(unsigned acpu_khz, int min_vdd, int max_vdd)
+{
+	int i;
+	min_vdd = min_vdd / 25 * 25;
+	max_vdd = max_vdd / 25 * 25;
+	mutex_lock(&avs_lock);
+	for (i = 0; acpu_vdd_tbl[i].acpu_khz; i++) {
+		if (acpu_khz == 0) {
+			acpu_vdd_tbl[i].min_vdd = min(max((acpu_vdd_tbl[i].min_vdd + min_vdd), VOLTAGE_MIN), VOLTAGE_MAX);
+			acpu_vdd_tbl[i].max_vdd = min(max((acpu_vdd_tbl[i].max_vdd + max_vdd), VOLTAGE_MIN), VOLTAGE_MAX);
+		} else if (acpu_vdd_tbl[i].acpu_khz == acpu_khz) {
+			acpu_vdd_tbl[i].min_vdd = min(max(min_vdd, VOLTAGE_MIN), VOLTAGE_MAX);
+			acpu_vdd_tbl[i].max_vdd = min(max(max_vdd, VOLTAGE_MIN), VOLTAGE_MAX);
+		}
+	}
+	avs_reset_delays(AVSDSCR_INPUT);
+	avs_set_tscsr(TSCSR_INPUT);
+	mutex_unlock(&avs_lock);
 }
-
-#endif // CONFIG_CPU_FREQ_VDD_LEVELS
-
+#endif
 
 /*
  *  Update the AVS voltage vs frequency table, for current temperature
@@ -206,7 +180,8 @@ static void avs_update_voltage_table(short *vdd_table)
 	int cpu;
 	int vu;
 	int l2;
-	u32 cur_freq_idx, f;
+	int i;
+	u32 cur_freq_idx;
 	short cur_voltage;
 
 	cur_freq_idx = avs_state.freq_idx;
@@ -236,32 +211,34 @@ static void avs_update_voltage_table(short *vdd_table)
 		AVSDEBUG("cpu=%d l2=%d vu=%d\n", cpu, l2, vu);
 		AVSDEBUG("Voltage up at %d\n", cur_freq_idx);
 
-		cur_voltage += VOLTAGE_STEP;
-		if (cur_voltage > MIN(acpu_vdd_tbl[cur_freq_idx].max_vdd_hard_limit, acpu_vdd_tbl[cur_freq_idx].max_vdd)) {
-		  printk(KERN_ERR
-			 "AVS: %d: Voltage (%d) can not get high enough! Max=%d\n",
-			 acpu_vdd_tbl[cur_freq_idx].acpu_khz,
-			 cur_voltage,
-			 MIN(acpu_vdd_tbl[cur_freq_idx].max_vdd_hard_limit, acpu_vdd_tbl[cur_freq_idx].max_vdd));
-		  cur_voltage=MIN(acpu_vdd_tbl[cur_freq_idx].max_vdd_hard_limit, acpu_vdd_tbl[cur_freq_idx].max_vdd);
-	}
+		if (cur_voltage >= VOLTAGE_MAX || cur_voltage >= acpu_vdd_tbl[cur_freq_idx].max_vdd)
+			if (avs_debug)
+				printk(KERN_ERR
+					"AVS: Voltage can not get high enough!\n");
 
-		// Raise the voltage only for the current frequency
-		//vdd_table[cur_freq_idx]=cur_voltage;
-		// Raise the voltage for the current frequency and all frequencies that are above it
-		for (f=cur_freq_idx; acpu_vdd_tbl[f].acpu_khz; f++) {
-		  vdd_table[f]=MAX(vdd_table[f], cur_voltage);
+		/* Raise the voltage for all frequencies */
+		for (i = 0; i < avs_state.freq_cnt; i++) {
+			vdd_table[i] = cur_voltage + VOLTAGE_STEP;
+			if (vdd_table[i] > VOLTAGE_MAX)
+				vdd_table[i] = VOLTAGE_MAX;
+			else if (vdd_table[i] > acpu_vdd_tbl[i].max_vdd)
+				vdd_table[i] = acpu_vdd_tbl[i].max_vdd;
 		}
 	} else if ((cpu == 1) && (l2 == 1) && (vu == 1)) {
-  //AVSDEBUG("cur_voltage=%d, min_vdd=%d, vdd_table=%d\n", cur_voltage, acpu_vdd_tbl[cur_freq_idx].min_vdd, vdd_table[cur_freq_idx]);
-	  // Only lower vdd for the current frequency
-	    AVSDEBUG("Trying to lower %d voltage to %d.\n", acpu_vdd_tbl[cur_freq_idx].acpu_khz, cur_voltage);
-	  cur_voltage -= VOLTAGE_STEP;
-	  if (cur_voltage < MAX(VOLTAGE_MIN, acpu_vdd_tbl[cur_freq_idx].min_vdd)) {
-	    AVSDEBUG("Locked at %d\n", MAX(VOLTAGE_MIN, acpu_vdd_tbl[cur_freq_idx].min_vdd));
-	    cur_voltage=MAX(VOLTAGE_MIN, acpu_vdd_tbl[cur_freq_idx].min_vdd);
-	  }
-	  vdd_table[cur_freq_idx]=cur_voltage;
+		AVSDEBUG("cur_voltage=%d, min_vdd=%d, vdd_table=%d\n", cur_voltage, acpu_vdd_tbl[cur_freq_idx].min_vdd, vdd_table[cur_freq_idx]);
+		if ((cur_voltage - VOLTAGE_STEP >= VOLTAGE_MIN) &&
+		    (cur_voltage - VOLTAGE_STEP >= acpu_vdd_tbl[cur_freq_idx].min_vdd) &&
+		    (cur_voltage <= vdd_table[cur_freq_idx])) {
+			vdd_table[cur_freq_idx] = cur_voltage - VOLTAGE_STEP;
+			AVSDEBUG("Voltage down for %d and lower levels\n",
+				cur_freq_idx);
+
+			/* clamp to this voltage for all lower levels */
+			for (i = 0; i < cur_freq_idx; i++) {
+				if (vdd_table[i] > vdd_table[cur_freq_idx])
+					vdd_table[i] = vdd_table[cur_freq_idx];
+			}
+		}
 	}
 }
 
@@ -279,16 +256,18 @@ static short avs_get_target_voltage(int freq_idx, bool update_table)
 	vdd_table = avs_state.avs_v + temp_index;
 
 	AVSDEBUG("vdd_table[%d]=%d\n", freq_idx, vdd_table[freq_idx]);
-	if ((update_table) || (vdd_table[freq_idx]==VOLTAGE_MAX)) {
+	if (update_table) {
 	  avs_update_voltage_table(vdd_table);
 	}
 
 	if (vdd_table[freq_idx] > acpu_vdd_tbl[freq_idx].max_vdd) {
-		pr_info("%dmV too high for %d.\n", vdd_table[freq_idx], acpu_vdd_tbl[freq_idx].acpu_khz);
+		if (avs_debug)
+			printk("%dmV too high for %d.\n", vdd_table[freq_idx], acpu_vdd_tbl[freq_idx].acpu_khz);
 		vdd_table[freq_idx] = acpu_vdd_tbl[freq_idx].max_vdd;
 	}
 	if (vdd_table[freq_idx] < acpu_vdd_tbl[freq_idx].min_vdd) {
-		pr_info("%dmV too low for %d.\n", vdd_table[freq_idx], acpu_vdd_tbl[freq_idx].acpu_khz);
+		if (avs_debug)
+			printk("%dmV too low for %d.\n", vdd_table[freq_idx], acpu_vdd_tbl[freq_idx].acpu_khz);
 		vdd_table[freq_idx] = acpu_vdd_tbl[freq_idx].min_vdd;
 	}
 
@@ -311,14 +290,16 @@ static int avs_set_target_voltage(int freq_idx, bool update_table)
 
 	new_voltage = avs_get_target_voltage(freq_idx, update_table);
 	if (avs_state.vdd != new_voltage) {
-	  /*AVSDEBUG*/
-	  pr_info("AVS setting V to %d mV @%d MHz\n", new_voltage, acpu_vdd_tbl[freq_idx].acpu_khz / 1000);
+		if (avs_debug)
+			printk("AVS setting V to %d mV @%d MHz\n",
+				new_voltage, acpu_vdd_tbl[freq_idx].acpu_khz / 1000);
 		rc = avs_state.set_vdd(new_voltage);
 		while (rc && ctr) {
 			rc = avs_state.set_vdd(new_voltage);
 			ctr--;
 			if (rc) {
-				printk(KERN_ERR "avs_set_target_voltage: Unable to set V to %d mV (attempt: %d)\n", new_voltage, 5 - ctr);
+				if (avs_debug)
+					printk(KERN_ERR "avs_set_target_voltage: Unable to set V to %d mV (attempt: %d)\n", new_voltage, 5 - ctr);
 				mdelay(1);
 			}
 		}
@@ -342,7 +323,8 @@ int avs_adjust_freq(u32 freq_idx, int begin)
 	}
 
 	if (freq_idx < 0 || freq_idx >= avs_state.freq_cnt) {
-		AVSDEBUG("Out of range :%d\n", freq_idx);
+		if (avs_debug)
+			printk("Out of range :%d\n", freq_idx);
 		return -EINVAL;
 	}
 
@@ -395,7 +377,7 @@ static int do_avs_timer(void *data)
 static int __init avs_work_init(void)
 {
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
-	kavs_task = kthread_create(do_avs_timer, NULL,
+	kavs_task = kthread_run(do_avs_timer, NULL,
 				   "avs");
 
 	if (IS_ERR(kavs_task)) {
@@ -460,56 +442,4 @@ void __exit avs_exit()
 	kfree(avs_state.avs_v);
 }
 
-/* Dump the current calculated vdd table
- */
-ssize_t	avs_get_vdd_table_str(char *buf) {
-  char		*ptr=buf; 
-  unsigned	tempIndex = GET_TEMPR()*avs_state.freq_cnt;
-  unsigned	f;
-  ssize_t	len;
-  short		*vdd_table;
-  
-  /* Table of voltages vs frequencies for this temp */
-  vdd_table = avs_state.avs_v + tempIndex;
-  
-  for (f=0; acpu_vdd_tbl[f].acpu_khz; f++) {
-    if (acpu_vdd_tbl[f].ignore==0) {
-      len=sprintf(ptr, "%8u: %4d\n", acpu_vdd_tbl[f].acpu_khz, vdd_table[f]);
-      ptr+=len;
-    }
-  }
-  *ptr=0;
-  return (strlen(buf));
-}
 
-/* Dump all the temperature voltage tables
- */
-ssize_t	avs_get_vdd_tables_str(char *buf) {
-  char		*ptr=buf; 
-  unsigned	tempIndex = GET_TEMPR();
-  unsigned	f;
-  ssize_t	len;
-  short		*vdd_table;
-
-  // Start by dumping the current temperature index
-  len=sprintf(ptr, "TempIdx=%d\n", tempIndex);
-  ptr += len;
-
-  // And now dump all the vdds for all temperatures and frequencies
-  for (f=0; acpu_vdd_tbl[f].acpu_khz; f++) {
-    if (acpu_vdd_tbl[f].ignore==0) {
-      len=sprintf(ptr, "%8u:", acpu_vdd_tbl[f].acpu_khz);
-      ptr += len;
-      
-      for (tempIndex=0; tempIndex<TEMPRS; tempIndex++) {
-	vdd_table=avs_state.avs_v + (tempIndex*avs_state.freq_cnt);
-	len=sprintf(ptr, " %4d", vdd_table[f]);
-	ptr+=len;
-      }
-      *ptr='\n';
-      ptr++;
-    }
-  }
-  *ptr=0;
-  return (strlen(buf));
-}

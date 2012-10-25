@@ -36,7 +36,6 @@ config ARCH_QSD8X50
 	select HAS_MSM_DEBUG_UART_PHYS
 	select VERIFY_PERMISSION_FAULT
 	select MSM_DAL
-	select REGULATOR
 
 config ARCH_MSM8X60
 	bool "MSM8X60"
@@ -179,14 +178,6 @@ config MACH_HALIBUT
 	help
 	  Support for the Qualcomm SURF7201A eval board.
 
-config MACH_SAPPHIRE
-	depends on ARCH_MSM
-	depends on ARCH_MSM7X00A
-	default y
-	bool "HTC Magic (aka sapphire)"
-	help
-	  Support for the HTC Dream, T-Mobile G1, Android ADP1 devices.
-
 config MACH_TROUT
 	depends on ARCH_MSM
 	depends on ARCH_MSM7X00A
@@ -208,48 +199,6 @@ config MACH_MSM7X30_FLUID
 	help
 	  Support for the Qualcomm MSM7x30 FLUID eval board.
 
-choice
-        depends on ARCH_QSD8X50
-        prompt "Bravo"
-        default MACH_BRAVO_NONE
-	help
-	  Select this to support the Bravo GSM or CDMA device
-
-	config MACH_BRAVO_NONE
-		bool "None"
-
-        config MACH_BRAVO
-                bool "GSM"
-		help
-		  Select this to support the Bravo GSM device
-
-	config MACH_BRAVOC
-		bool "CDMA"
-		help
-		  Select this to support the Bravo CDMA device
-endchoice
-
-config MACH_INCREDIBLE
-	depends on ARCH_QSD8X50
-	default n
-	bool "Incredible"
-	help
-	  Select this to support the Incredible device
-
-config MACH_INCREDIBLEC
-	depends on ARCH_QSD8X50
-	default n
-	bool "IncredibleC"
-	help
-	  Select this to support the IncredibleC device
-
-config MACH_MAHIMAHI
-	depends on ARCH_QSD8X50
-	default y
-	bool "Mahi-Mahi"
-	help
-	  Select this to support the Mahi-Mahi device
-
 config MACH_SWORDFISH
 	depends on ARCH_QSD8X50
 	default n
@@ -257,25 +206,11 @@ config MACH_SWORDFISH
 	help
 	  Support for the Qualcomm SURF8250 eval board.
 
-config MACH_SUPERSONIC
-	depends on ARCH_QSD8X50
-	default n
-	bool "Supersonic (HTC EVO 4G)"
-	help
-	  Select this to support the Supersonic device
-
 config MACH_QSD8X50_SURF
 	depends on ARCH_QSD8X50
 	bool "QSD8x50 SURF"
 	help
 	  Support for the Qualcomm QSD8x50 SURF eval board.
-
-config MACH_QSD8X50_FFA
-	depends on ARCH_QSD8X50
-	default n
-	bool "8x50-ffa"
-	help
-	  Select this to support the 8x50 ffa device
 
 config MACH_QSD8X50A_ST1_5
 	depends on ARCH_QSD8X50
@@ -346,6 +281,74 @@ config MSM_SMD_PKG3
 config MSM_PROC_COMM
 	bool
 
+config MACH_SAPPHIRE
+	depends on ARCH_MSM7X00A && !MACH_TROUT && !MACH_HALIBUT
+	default y
+	bool "Sapphire"
+
+config MACH_MAHIMAHI
+	depends on ARCH_QSD8X50
+	default y
+	bool "Mahi-Mahi"
+	help
+	  Select this to support the Mahi-Mahi device
+
+choice
+        depends on ARCH_QSD8X50
+        prompt "Bravo"
+        default MACH_BRAVO_NONE
+	help
+	  Select this to support the Bravo GSM or CDMA device
+
+	config MACH_BRAVO_NONE
+		bool "None"
+
+        config MACH_BRAVO
+                bool "GSM"
+		help
+		  Select this to support the Bravo GSM device
+
+	config MACH_BRAVOC
+		bool "CDMA"
+		help
+		  Select this to support the Bravo CDMA device
+endchoice
+
+config MACH_INCREDIBLE
+	depends on ARCH_QSD8X50
+	default n
+	bool "Incredible"
+	help
+	  Select this to support the Incredible device
+
+config MACH_INCREDIBLEC
+	depends on ARCH_QSD8X50
+	default n
+	bool "IncredibleC"
+	help
+	  Select this to support the IncredibleC device
+
+config MACH_SUPERSONIC
+	depends on ARCH_QSD8X50
+	default n
+	bool "Supersonic (HTC EVO 4G)"
+	help
+	  Select this to support the Supersonic device
+
+config MACH_QSD8X50_FFA
+	depends on ARCH_QSD8X50
+	default n
+	bool "8x50-ffa"
+	help
+	  Select this to support the 8x50 ffa device
+
+config MACH_MSM7X30_SURF
+	depends on ARCH_MSM7X30
+	default n
+	bool "QCT SURF7x30 Board"
+	help
+	  Select this to support the Qualcomm SURF7X30 development board
+
 config HTC_HEADSET
 	tristate "HTC 2 Wire detection driver"
 	default n
@@ -369,6 +372,12 @@ config HTC_BATTCHG
 	depends on MSM_ONCRPCROUTER && POWER_SUPPLY
 	default n
 	bool "HTC battery / charger driver"
+
+config HTC_BATTCHG_SBC
+	default n
+	bool "Superior Battery Charging mod"
+	help
+	  Superior Battery Charging mod
 
 config HTC_BATTCHG_SMEM
 	depends on HTC_BATTCHG
@@ -395,6 +404,13 @@ config HTC_ONMODE_CHARGING
   default n
   bool "Low-power hibernate charging support"
 
+-config QSD_SVS
+	bool "QSD Static Voltage Scaling"
+	depends on (ARCH_MSM_SCORPION)
+	default y
+	help
+	  Enables static voltage scaling using the TPS65023 PMIC.
+
 config QSD_PMIC_DEFAULT_DCDC1
 	int "PMIC default output voltage"
 	depends on (ARCH_MSM_SCORPION)
@@ -409,18 +425,6 @@ config CACHE_FLUSH_RANGE_LIMIT
 	  When flushing a cache range larger then this (hex) limit, flush the
 	  entire cache instead. Flushing a large range can be slower than
 	  flushing, then refilling, the entire cache.
-
-config PHYS_OFFSET
-	hex "Physical Offset"
-	default "0x40800000" if ARCH_MSM9615
-	default "0x80200000" if ARCH_APQ8064
-	default "0x80200000" if ARCH_MSM8960
-	default "0x10000000" if ARCH_FSM9XXX
-	default "0x00200000" if !MSM_STACKED_MEMORY
-	default "0x00000000" if ARCH_QSD8X50 && MSM_SOC_REV_A
-	default "0x20000000" if ARCH_QSD8X50
-	default "0x40200000" if ARCH_MSM8X60
-	default "0x10000000"
 
 choice
 	prompt "Default Timer"
@@ -622,13 +626,6 @@ config MSM_RPCSERVERS
 	help
 	  none
 
-config EXPERIMENTAL_FREQ_TABLE
-	depends on ARCH_QSD8X50
-        default n
-	bool "Use experimental 8X50 freq table"
-        help
-          Allow the use of experimental frequencies upto 1850Mhz for QSD8X50.
-
 if CPU_FREQ_MSM
 
 config MSM_CPU_FREQ_SET_MIN_MAX
@@ -658,21 +655,33 @@ config AXI_SCREEN_POLICY
 	help
 	  Simple AXI scaling based on screen ON/OFF and PWRC.
 
-config QSD_SVS
-	bool "QSD Static Voltage Scaling"
-	depends on (ARCH_MSM_SCORPION)
-	default y
-	help
-	  Enables static voltage scaling using the TPS65023 PMIC.
-
 config MSM_CPU_AVS
-	bool "Enable Hybrid Adaptive Voltage Scaling (HAVS)"
+	bool "Enable software controlled Adaptive Voltage Scaling (AVS)"
 	depends on (ARCH_MSM_SCORPION && QSD_SVS)
+	depends on ARCH_QSD8X50
+	default n
+	select MSM_AVS_HW
+	help
+	  This enables the s/w control of Adaptive Voltage Scaling feature
+	  in Qualcomm ARMv7 CPUs. It adjusts the voltage for each frequency
+	  based on feedback from three ring oscillators in the CPU.
+
+config MSM_AVS_HW
+	bool "Enable Adaptive Voltage Scaling (AVS)"
+	default n
+	help
+	  Enable AVS hardware to fine tune voltage at each frequency. The
+	  AVS hardware blocks associated with each Qualcomm ARMv7 cores can
+	  fine tune the voltages based on the feedback from the ring
+	  oscillators.
+
+config MSM_HW3D
+	tristate "MSM Hardware 3D Register Driver"
+	depends on EARLYSUSPEND
 	default y
 	help
-	  This enables the Adaptive Voltage Scaling feature of
-	  Qualcomm ARMv7 CPUs. It adjusts the voltage for each frequency
-	  based on feedback from three ring oscillators in the CPU.
+	  Provides access to registers needed by the userspace OpenGL|ES
+	  library.
 
 config MSM_ADSP
 	depends on ARCH_MSM7X00A
