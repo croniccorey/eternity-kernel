@@ -130,13 +130,16 @@ struct clkctl_acpu_speed acpu_vdd_tbl[] = {
   { 1113600, MAX(VOLTAGE_MIN_START,1275), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
   { 1152000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
   { 1200000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
-  { 1210000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
+//  { 1210000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
   { 1220000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
+  { 1250000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
+  { 1280000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
+  { 1300000, MAX(VOLTAGE_MIN_START,1300), VOLTAGE_MAX, VOLTAGE_MAX, 0 },
   { 0 },
 };
 
 #if defined(CONFIG_CPU_FREQ_VDD_LEVELS) && defined(CONFIG_MSM_CPU_AVS)
-ssize_t acpuclk_get_vdd_levels_havs_str(char *buf) {
+ssize_t acpuclk_get_vdd_levels_str(char *buf) {
   int i, len = 0;
   if (buf) {
     for (i = 0; acpu_vdd_tbl[i].acpu_khz; i++) {
@@ -148,7 +151,7 @@ ssize_t acpuclk_get_vdd_levels_havs_str(char *buf) {
   return len;
 }
 
-void acpuclk_set_vdd_havs(unsigned acpu_khz, int min_vdd, int max_vdd    ) {
+void acpuclk_set_vdd(unsigned acpu_khz, int min_vdd, int max_vdd    ) {
   int i;
   min_vdd = min_vdd / 25 * 25;	//! regulator only accepts multiples of 25 (mV)
   max_vdd=max_vdd/25*25;

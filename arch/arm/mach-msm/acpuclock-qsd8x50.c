@@ -22,7 +22,6 @@
 #include <linux/errno.h>
 #include <linux/cpufreq.h>
 #include <linux/regulator/consumer.h>
-#include <linux/regulator/driver.h>
 
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
@@ -60,20 +59,8 @@ struct clkctl_acpu_speed {
 	unsigned sc_l_value;
 	unsigned lpj;
 	int      vdd;
-	unsigned axiclk_khz;
-};
-
-static unsigned long max_axi_rate;
-
-struct regulator {
-	struct device *dev;
-	struct list_head list;
-	int uA_load;
-	int min_uV;
-	int max_uV;
-	char *supply_name;
-	struct device_attribute dev_attr;
-	struct regulator_dev *rdev;
+  unsigned axiclk_khz;
+  unsigned	ignore;	// Set to 1 if we are to ignore this frequency
 };
 
 /* clock sources */
@@ -85,37 +72,37 @@ struct regulator {
 
 /* core sources */
 #define SRC_RAW		0 /* clock from SPSS_CLK_CNTL */
-#define SRC_SCPLL	1 /* output of scpll 128-1113 MHZ */
-#define SRC_AXI		2 /* 128 MHz */
+#define SRC_SCPLL	1 /* output of scpll 19-1220 MHZ */
+#define SRC_AXI		2 /* 176 MHz */
 #define SRC_PLL1	3 /* 768 MHz */
 
 struct clkctl_acpu_speed acpu_freq_tbl[] = {
-	{  19200, CCTL(CLK_TCXO, 1),		SRC_RAW, 0, 0, 975, 14000 },
-	{ 128000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 975, 14000 },
-	{ 245000, CCTL(CLK_MODEM_PLL, 1),	SRC_RAW, 0, 0, 1025, 29000 },
-	/* Work around for acpu resume hung, GPLL is turn off by arm9 */
-	/*{ 256000, CCTL(CLK_GLOBAL_PLL, 3),	SRC_RAW, 0, 0, 1000, 29000 },*/
-	{ 384000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1025, 58000 },
-	{ 422400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 },
-	{ 460800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1050, 117000 },
-	{ 499200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0D, 0, 1075, 117000 },
-	{ 537600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1075, 117000 },
-	{ 576000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1100, 117000 },
-	{ 614400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1100, 117000 },
-	{ 652800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1125, 117000 },
-	{ 691200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1150, 117000 },
-	{ 729600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1175, 117000 },
-	{ 768000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x14, 0, 1200, 128000 },
-	{ 806400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x15, 0, 1225, 128000 },
-	{ 844800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x16, 0, 1250, 128000 },
-	{ 883200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x17, 0, 1275, 128000 },
-	{ 921600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x18, 0, 1275, 128000 },
-	{ 960000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x19, 0, 1275, 128000 },
-	{ 998400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x1A, 0, 1275, 128000 },
-	{ 1036800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x1B, 0, 1275, 128000 },
-	{ 1075200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x1C, 0, 1275, 128000 },
-	{ 1113600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x1D, 0, 1275, 128000 },
-	{ 0 },
+  {  19200, CCTL(CLK_TCXO, 1),		SRC_RAW, 0, 0, 1050, 14000 , 1 },
+  { 176000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 1050, 14000 , 0 },
+  { 245000, CCTL(CLK_MODEM_PLL, 1),	SRC_RAW, 0, 0, 1050, 29000 , 0 },
+  /* Work arround for acpu resume hung, GPLL is turn off by arm9 */
+  /*{ 256000, CCTL(CLK_GLOBAL_PLL, 3),	SRC_RAW, 0, 0, 1050, 29000 , 1 },*/
+  { 384000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1050, 58000 , 0 },
+  { 422400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 , 0 },
+  { 499200, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1075, 117000 , 0 },
+  { 576000, CCTL(CLK_TCXO, 1),  	SRC_SCPLL, 0x0D, 0, 1100, 117000 , 0 },
+  { 614400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1125, 117000 , 0 },
+  { 729600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1200, 117000 , 0 },
+  { 768000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1200, 128000 , 0 },
+  { 844800, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1250, 128000 , 0 },
+  { 921600, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1275, 128000 , 0 },
+  { 998400, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1275, 128000 , 0 },
+  { 1036800, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x14, 0, 1275, 128000 , 0 },
+  { 1075200, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x15, 0, 1275, 128000 , 0 },
+  { 1113600, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x16, 0, 1275, 128000 , 0 },
+  { 1152000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x17, 0, 1300, 128000 , 0 }, 
+  { 1200000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x18, 0, 1300, 128000 , 0 },
+//  { 1210000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 128000 , 0 },
+  { 1220000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 128000 , 0 },
+  { 1250000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1B, 0, 1300, 128000 , 0 },
+  { 1280000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1C, 0, 1300, 128000 , 0 },
+  { 1300000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1D, 0, 1300, 128000 , 0 },
+  { 0 },
 };
 
 /* select the standby clock that is used when switching scpll
@@ -140,13 +127,15 @@ static void __init acpuclk_init_cpufreq_table(void)
 		freq_table[i].index = i;
 		freq_table[i].frequency = CPUFREQ_ENTRY_INVALID;
 
-		/* Define speeds that we want to skip */
-		if (acpu_freq_tbl[i].acpu_khz == 19200 ||
-				acpu_freq_tbl[i].acpu_khz == 128000 ||
-				acpu_freq_tbl[i].acpu_khz == 256000)
-			continue;
+		/* Skip speeds using the global pll */
+		/*if (acpu_freq_tbl[i].acpu_khz == 256000 ||
+				acpu_freq_tbl[i].acpu_khz == 19200)
+				continue;*/
 
 		vdd = acpu_freq_tbl[i].vdd;
+		if (acpu_freq_tbl[i].ignore==1) {
+		  continue;
+		}
 		/* Allow mpll and the first scpll speeds */
 		if (acpu_freq_tbl[i].acpu_khz == acpu_mpll->acpu_khz ||
 				acpu_freq_tbl[i].acpu_khz == 384000) {
@@ -154,8 +143,9 @@ static void __init acpuclk_init_cpufreq_table(void)
 			continue;
 		}
 
-		/* Add to the table */
-		freq_table[i].frequency = acpu_freq_tbl[i].acpu_khz;
+		/* Take the fastest speed available at the specified VDD level */
+		//if (vdd != acpu_freq_tbl[i + 1].vdd)
+			freq_table[i].frequency = acpu_freq_tbl[i].acpu_khz;
 	}
 
 	freq_table[i].index = i;
@@ -175,7 +165,7 @@ struct clock_state {
 	uint32_t			vdd_switch_time_us;
 	unsigned long			power_collapse_khz;
 	unsigned long			wait_for_irq_khz;
-	struct clk*     		clk_ebi1;
+  struct clk*     clk_ebi1;
 	struct regulator                *regulator;
 	int (*acpu_set_vdd) (int mvolts);
 };
@@ -196,6 +186,43 @@ static DEFINE_SPINLOCK(acpu_lock);
 #define PLLMODE_STEP_CAL	6
 #define PLLMODE_NORMAL		7
 #define PLLMODE_MASK		7
+
+#if defined(CONFIG_CPU_FREQ_VDD_LEVELS) && !defined(CONFIG_MSM_CPU_AVS)
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+	int i, len = 0;
+	if (buf)
+	{
+	  mutex_lock(&drv_state.lock);
+	  for (i = 0; acpu_freq_tbl[i].acpu_khz; i++) 
+	    {
+	      if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
+		len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpu_khz, acpu_freq_tbl[i].vdd);
+	    }
+	  mutex_unlock(&drv_state.lock);
+	}
+	return len;
+}
+
+void acpuclk_set_vdd(unsigned acpu_khz, int vdd)
+{
+	int i;
+	vdd = vdd / 25 * 25;	//! regulator only accepts multiples of 25 (mV)
+	mutex_lock(&drv_state.lock);
+	for (i = 0; acpu_freq_tbl[i].acpu_khz; i++)
+	{
+		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
+		{
+			if (acpu_khz == 0)
+				acpu_freq_tbl[i].vdd = min(max((acpu_freq_tbl[i].vdd + vdd), BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
+			else if (acpu_freq_tbl[i].acpu_khz == acpu_khz)
+				acpu_freq_tbl[i].vdd = min(max(vdd, BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
+		}
+	}
+	mutex_unlock(&drv_state.lock);
+}
+
+#endif // CONFIG_CPU_FREQ_VDD_LEVELS
 
 static void scpll_power_down(void)
 {
@@ -257,7 +284,7 @@ static void scpll_set_freq(uint32_t lval)
 			;
 
 		/* completion bit is not reliable for SHOT switch */
-		udelay(25);
+		udelay(15);
 	}
 
 	/* write the new L val and switch mode */
@@ -300,48 +327,29 @@ static void select_clock(unsigned src, unsigned config)
 	writel(val | ((src & 3) << 1), SPSS_CLK_SEL_ADDR);
 }
 
-static int acpu_set_vdd(int vdd)
+static int acpuclk_set_vdd_level(int vdd)
 {
-	int rc = 0;
-
 	if (!drv_state.regulator || IS_ERR(drv_state.regulator)) {
 		drv_state.regulator = regulator_get(NULL, "acpu_vcore");
 		if (IS_ERR(drv_state.regulator)) {
-			pr_info("acpu_set_vdd %d no regulator\n", vdd);
+			pr_info("acpuclk_set_vdd_level %d no regulator\n", vdd);
 			/* Assume that the PMIC supports scaling the processor
 			 * to its maximum frequency at its default voltage.
 			 */
-			return -ENODEV;
+			return 0;
 		}
-		pr_info("acpu_set_vdd got regulator\n");
+		pr_info("acpuclk_set_vdd_level got regulator\n");
 	}
-
-	rc = tps65023_set_dcdc1_level(drv_state.regulator->rdev, vdd);
-
-	if (rc == -ENODEV && vdd <= CONFIG_QSD_PMIC_DEFAULT_DCDC1)
-		return 0;
-
-	return rc;
-}
-
-static int acpuclk_set_vdd_level(int vdd)
-{
-	if (drv_state.acpu_set_vdd)
-		return drv_state.acpu_set_vdd(vdd);
-	else {
-		/* Assume that the PMIC supports scaling the processor
-		 * to its maximum frequency at its default voltage.
-		 */
-		return 0;
-	}
+	vdd *= 1000; /* mV -> uV */
+	return regulator_set_voltage(drv_state.regulator, vdd, vdd);
 }
 
 int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
 {
 	struct clkctl_acpu_speed *cur, *next;
 	unsigned long flags;
-	int rc = 0;
-	int freq_index = 0;
+	int freq_index=0;
+	int rc;
 
 	cur = drv_state.current_speed;
 
@@ -365,26 +373,29 @@ int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
 
 	if (reason == SETRATE_CPUFREQ) {
 		mutex_lock(&drv_state.lock);
-#ifdef CONFIG_MSM_CPU_AVS
-		/* Notify avs before changing frequency */
-		rc = avs_adjust_freq(freq_index, 1);
-		if (rc) {
-			printk(KERN_ERR
-				"acpuclock: Unable to increase ACPU "
-				"vdd: %d.\n", (int) rate);
-			mutex_unlock(&drv_state.lock);
-			return rc;
-		}
-#endif
 		/* Increase VDD if needed. */
-		if (next->vdd > cur->vdd) {
-			rc = acpuclk_set_vdd_level(next->vdd);
+
+#ifdef CONFIG_MSM_CPU_AVS
+		//if(avs_enabled()) {
+			// Notify avs before changing frequency
+			rc = avs_adjust_freq(freq_index, 1);
 			if (rc) {
-				pr_err("acpuclock: Unable to increase ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
-				mutex_unlock(&drv_state.lock);
-				return rc;
+				pr_err("Unable to increase ACPU vdd (%d)\n", rc);
+				goto out;
 			}
-		}
+			//} else {
+			//#endif // CONFIG_MSM_CPU_AVS
+#else
+			if (next->vdd > cur->vdd) {
+				if (acpuclk_set_vdd_level(next->vdd)) {
+					pr_err("acpuclock: Unable to increase ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
+					mutex_unlock(&drv_state.lock);
+					return -EINVAL;
+				}
+			}
+			//#ifdef CONFIG_MSM_CPU_AVS
+			  //}
+#endif // CONFIG_MSM_CPU_AVS
 	}
 
 	spin_lock_irqsave(&acpu_lock, flags);
@@ -415,27 +426,33 @@ int acpuclk_set_rate(unsigned long rate, enum setrate_reason reason)
 	spin_unlock_irqrestore(&acpu_lock, flags);
 
 #ifndef CONFIG_AXI_SCREEN_POLICY
-	if (reason == SETRATE_CPUFREQ || reason == SETRATE_PC) {
-		if (cur->axiclk_khz != next->axiclk_khz)
-			clk_set_rate(drv_state.clk_ebi1, next->axiclk_khz * 1000);
-		DEBUG("acpuclk_set_rate switch axi to %d\n",
-			clk_get_rate(drv_state.clk_ebi1));
-	}
+  if (reason == SETRATE_CPUFREQ || reason == SETRATE_PC) {
+    if (cur->axiclk_khz != next->axiclk_khz)
+      clk_set_rate(drv_state.clk_ebi1, next->axiclk_khz * 1000);
+    DEBUG("acpuclk_set_rate switch axi to %d\n",
+      clk_get_rate(drv_state.clk_ebi1));
+  }
 #endif
+out:
 	if (reason == SETRATE_CPUFREQ) {
 #ifdef CONFIG_MSM_CPU_AVS
-		/* notify avs after changing frequency */
-		rc = avs_adjust_freq(freq_index, 0);
-		if (rc)
-			printk(KERN_ERR
-				"acpuclock: Unable to drop ACPU vdd: %d.\n", (int) rate);
-#endif
-		/* Drop VDD level if we can. */
-		if (next->vdd < cur->vdd) {
-			rc = acpuclk_set_vdd_level(next->vdd);
+	  //if(avs_enabled()) {
+			/* notify avs after changing frequency */
+			rc = avs_adjust_freq(freq_index, 0);
 			if (rc)
-				 pr_err("acpuclock: Unable to drop ACPU VDD from%d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
-		}
+				pr_warning("Unable to drop ACPU vdd (%d)\n", rc);
+			//	} else {
+			//#endif // CONFIG_MSM_CPU_AVS
+#else
+			/* Drop VDD level if we can. */
+			if (next->vdd < cur->vdd) {
+				if (acpuclk_set_vdd_level(next->vdd))
+				/*	pr_err("acpuclock: Unable to drop ACPU VDD.\n");*/
+					pr_err("acpuclock: Unable to drop ACPU VDD from %d to %d setting rate to %d.\n", cur->vdd, next->vdd, (int) rate);
+			}
+			//#ifdef CONFIG_MSM_CPU_AVS
+			  //}
+#endif // CONFIG_MSM_CPU_AVS
 		mutex_unlock(&drv_state.lock);
 	}
 
@@ -470,7 +487,7 @@ static int pll_request(unsigned id, unsigned on)
 
 static void __init acpuclk_init(void)
 {
-	struct clkctl_acpu_speed *speed, *max_s;
+	struct clkctl_acpu_speed *speed;
 	unsigned init_khz;
 
 	init_khz = acpuclk_find_speed();
@@ -495,10 +512,10 @@ static void __init acpuclk_init(void)
 	 */
 	speed = acpu_freq_tbl;
 	for (;;) {
-		if (speed->acpu_khz == 806400)
+		if (speed->acpu_khz == 768000)
 			break;
 		if (speed->acpu_khz == 0) {
-			pr_err("acpuclk_init: cannot find 806MHz\n");
+			pr_err("acpuclk_init: cannot find 768MHz\n");
 			BUG();
 		}
 		speed++;
@@ -522,24 +539,22 @@ static void __init acpuclk_init(void)
 					   init_khz, speed->acpu_khz);
 
 	loops_per_jiffy = drv_state.current_speed->lpj;
-
-	for (speed = acpu_freq_tbl; speed->acpu_khz != 0; speed++)
-		;
-
-	max_s = speed - 1;
-	max_axi_rate = max_s->axiclk_khz * 1000;
 }
-
-unsigned long acpuclk_get_max_axi_rate(void)
-{
-	return max_axi_rate;
-}
-EXPORT_SYMBOL(acpuclk_get_max_axi_rate);
 
 unsigned long acpuclk_get_rate(void)
 {
 	return drv_state.current_speed->acpu_khz;
 }
+
+int acpuclk_get_index(void)
+{
+	int i;
+	for (i = 0; acpu_freq_tbl[i].acpu_khz; i++)
+		if(acpu_freq_tbl[i].acpu_khz==drv_state.current_speed->acpu_khz)
+			return i;
+        return -EINVAL;
+}
+
 
 uint32_t acpuclk_get_switch_time(void)
 {
@@ -549,23 +564,23 @@ uint32_t acpuclk_get_switch_time(void)
 unsigned long acpuclk_power_collapse(int from_idle)
 {
 	int ret = acpuclk_get_rate();
-	enum setrate_reason reason = (from_idle) ? SETRATE_PC_IDLE : SETRATE_PC;
+  enum setrate_reason reason = (from_idle) ? SETRATE_PC_IDLE : SETRATE_PC;
 	if (ret > drv_state.power_collapse_khz)
-		acpuclk_set_rate(drv_state.power_collapse_khz * 1000, reason);
-	return ret * 1000;
+		acpuclk_set_rate(drv_state.power_collapse_khz*1000, reason);
+	return ret*1000;
 }
 
 unsigned long acpuclk_get_wfi_rate(void)
 {
-	return drv_state.wait_for_irq_khz * 1000;
+	return drv_state.wait_for_irq_khz*1000;
 }
 
 unsigned long acpuclk_wait_for_irq(void)
 {
 	int ret = acpuclk_get_rate();
 	if (ret > drv_state.wait_for_irq_khz)
-		acpuclk_set_rate(drv_state.wait_for_irq_khz * 1000, 1);
-	return ret * 1000;
+		acpuclk_set_rate(drv_state.wait_for_irq_khz*1000, SETRATE_SWFI);
+	return ret*1000;
 }
 
 #ifdef CONFIG_MSM_CPU_AVS
@@ -583,7 +598,7 @@ static int __init acpu_avs_init(int (*set_vdd) (int), int khz)
 
 	return avs_init(set_vdd, freq_count, freq_index);
 }
-#endif
+#endif // CONFIG_MSM_CPU_AVS
 
 void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 {
@@ -595,60 +610,23 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 	drv_state.vdd_switch_time_us = clkdata->vdd_switch_time_us;
 	drv_state.power_collapse_khz = clkdata->power_collapse_khz;
 	drv_state.wait_for_irq_khz = clkdata->wait_for_irq_khz;
-	drv_state.acpu_set_vdd = acpu_set_vdd;
 
 	if (clkdata->mpll_khz)
 		acpu_mpll->acpu_khz = clkdata->mpll_khz;
 
 	acpuclk_init();
 	acpuclk_init_cpufreq_table();
-	drv_state.clk_ebi1 = clk_get(NULL,"ebi1_clk");
+  drv_state.clk_ebi1 = clk_get(NULL,"ebi1_clk");
 #ifndef CONFIG_AXI_SCREEN_POLICY
-	clk_set_rate(drv_state.clk_ebi1, drv_state.current_speed->axiclk_khz * 1000);
+  clk_set_rate(drv_state.clk_ebi1, drv_state.current_speed->axiclk_khz * 1000);
 #endif
+
 #ifdef CONFIG_MSM_CPU_AVS
-	if (!acpu_avs_init(drv_state.acpu_set_vdd,
+	if (!acpu_avs_init(acpuclk_set_vdd_level,
 		drv_state.current_speed->acpu_khz)) {
-		/* avs init successful. avs will handle voltage changes */
-		drv_state.acpu_set_vdd = NULL;
+		printk("AVS init successful\n");
 	}
-#endif
+#endif // CONFIG_MSM_CPU_AVS
+
 }
 
-#ifdef CONFIG_CPU_FREQ_VDD_LEVELS
-
-ssize_t acpuclk_get_vdd_levels_str(char *buf)
-{
-int i, len = 0;
-if (buf)
-{
-mutex_lock(&drv_state.lock);
-for (i = 0; acpu_freq_tbl[i].acpu_khz; i++)
-{
-if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
-len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpu_khz, acpu_freq_tbl[i].vdd);
-}
-mutex_unlock(&drv_state.lock);
-}
-return len;
-}
-
-void acpuclk_set_vdd(unsigned acpu_khz, int vdd)
-{
-int i;
-vdd = vdd / 25 * 25; //! regulator only accepts multiples of 25 (mV)
-mutex_lock(&drv_state.lock);
-for (i = 0; acpu_freq_tbl[i].acpu_khz; i++)
-{
-if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
-{
-if (acpu_khz == 0)
-acpu_freq_tbl[i].vdd = min(max((acpu_freq_tbl[i].vdd + vdd), BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-else if (acpu_freq_tbl[i].acpu_khz == acpu_khz)
-acpu_freq_tbl[i].vdd = min(max(vdd, BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
-}
-}
-mutex_unlock(&drv_state.lock);
-}
-
-#endif
