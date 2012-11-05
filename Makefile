@@ -2,7 +2,7 @@ VERSION = 2
 PATCHLEVEL = 6
 SUBLEVEL = 38
 EXTRAVERSION = .8
-NAME = Flesh-Eating Bats with Fangs
+NAME = Crazy Stoner Looking for Munchies
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
