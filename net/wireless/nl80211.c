@@ -1960,13 +1960,41 @@ static int parse_station_flags(struct genl_info *info,
 	return 0;
 }
 
+static bool nl80211_put_sta_rate(struct sk_buff *msg, struct rate_info *info,
+				 int attr)
+{
+	struct nlattr *rate;
+	u16 bitrate;
+
+	rate = nla_nest_start(msg, attr);
+	if (!rate)
+		goto nla_put_failure;
+
+	/* cfg80211_calculate_bitrate will return 0 for mcs >= 32 */
+	bitrate = cfg80211_calculate_bitrate(info);
+	if (bitrate > 0)
+		NLA_PUT_U16(msg, NL80211_RATE_INFO_BITRATE, bitrate);
+
+	if (info->flags & RATE_INFO_FLAGS_MCS)
+		NLA_PUT_U8(msg, NL80211_RATE_INFO_MCS, info->mcs);
+	if (info->flags & RATE_INFO_FLAGS_40_MHZ_WIDTH)
+		NLA_PUT_FLAG(msg, NL80211_RATE_INFO_40_MHZ_WIDTH);
+	if (info->flags & RATE_INFO_FLAGS_SHORT_GI)
+		NLA_PUT_FLAG(msg, NL80211_RATE_INFO_SHORT_GI);
+
+	nla_nest_end(msg, rate);
+	return true;
+
+nla_put_failure:
+	return false;
+}
+
 static int nl80211_send_station(struct sk_buff *msg, u32 pid, u32 seq,
 				int flags, struct net_device *dev,
 				const u8 *mac_addr, struct station_info *sinfo)
 {
 	void *hdr;
-	struct nlattr *sinfoattr, *txrate;
-	u16 bitrate;
+	struct nlattr *sinfoattr, *bss_param;
 
 	hdr = nl80211hdr_put(msg, pid, seq, flags, NL80211_CMD_NEW_STATION);
 	if (!hdr)
@@ -1980,6 +2008,9 @@ static int nl80211_send_station(struct sk_buff *msg, u32 pid, u32 seq,
 	sinfoattr = nla_nest_start(msg, NL80211_ATTR_STA_INFO);
 	if (!sinfoattr)
 		goto nla_put_failure;
+	if (sinfo->filled & STATION_INFO_CONNECTED_TIME)
+		NLA_PUT_U32(msg, NL80211_STA_INFO_CONNECTED_TIME,
+			    sinfo->connected_time);
 	if (sinfo->filled & STATION_INFO_INACTIVE_TIME)
 		NLA_PUT_U32(msg, NL80211_STA_INFO_INACTIVE_TIME,
 			    sinfo->inactive_time);
@@ -2005,24 +2036,14 @@ static int nl80211_send_station(struct sk_buff *msg, u32 pid, u32 seq,
 		NLA_PUT_U8(msg, NL80211_STA_INFO_SIGNAL_AVG,
 			   sinfo->signal_avg);
 	if (sinfo->filled & STATION_INFO_TX_BITRATE) {
-		txrate = nla_nest_start(msg, NL80211_STA_INFO_TX_BITRATE);
-		if (!txrate)
+		if (!nl80211_put_sta_rate(msg, &sinfo->txrate,
+					  NL80211_STA_INFO_TX_BITRATE))
 			goto nla_put_failure;
-
-		/* cfg80211_calculate_bitrate will return 0 for mcs >= 32 */
-		bitrate = cfg80211_calculate_bitrate(&sinfo->txrate);
-		if (bitrate > 0)
-			NLA_PUT_U16(msg, NL80211_RATE_INFO_BITRATE, bitrate);
-
-		if (sinfo->txrate.flags & RATE_INFO_FLAGS_MCS)
-			NLA_PUT_U8(msg, NL80211_RATE_INFO_MCS,
-				    sinfo->txrate.mcs);
-		if (sinfo->txrate.flags & RATE_INFO_FLAGS_40_MHZ_WIDTH)
-			NLA_PUT_FLAG(msg, NL80211_RATE_INFO_40_MHZ_WIDTH);
-		if (sinfo->txrate.flags & RATE_INFO_FLAGS_SHORT_GI)
-			NLA_PUT_FLAG(msg, NL80211_RATE_INFO_SHORT_GI);
-
-		nla_nest_end(msg, txrate);
+	}
+	if (sinfo->filled & STATION_INFO_RX_BITRATE) {
+		if (!nl80211_put_sta_rate(msg, &sinfo->rxrate,
+					  NL80211_STA_INFO_RX_BITRATE))
+			goto nla_put_failure;
 	}
 	if (sinfo->filled & STATION_INFO_RX_PACKETS)
 		NLA_PUT_U32(msg, NL80211_STA_INFO_RX_PACKETS,
@@ -2036,7 +2057,30 @@ static int nl80211_send_station(struct sk_buff *msg, u32 pid, u32 seq,
 	if (sinfo->filled & STATION_INFO_TX_FAILED)
 		NLA_PUT_U32(msg, NL80211_STA_INFO_TX_FAILED,
 			    sinfo->tx_failed);
+	if (sinfo->filled & STATION_INFO_BSS_PARAM) {
+		bss_param = nla_nest_start(msg, NL80211_STA_INFO_BSS_PARAM);
+		if (!bss_param)
+			goto nla_put_failure;
+
+		if (sinfo->bss_param.flags & BSS_PARAM_FLAGS_CTS_PROT)
+			NLA_PUT_FLAG(msg, NL80211_STA_BSS_PARAM_CTS_PROT);
+		if (sinfo->bss_param.flags & BSS_PARAM_FLAGS_SHORT_PREAMBLE)
+			NLA_PUT_FLAG(msg, NL80211_STA_BSS_PARAM_SHORT_PREAMBLE);
+		if (sinfo->bss_param.flags & BSS_PARAM_FLAGS_SHORT_SLOT_TIME)
+			NLA_PUT_FLAG(msg,
+				     NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME);
+		NLA_PUT_U8(msg, NL80211_STA_BSS_PARAM_DTIM_PERIOD,
+			   sinfo->bss_param.dtim_period);
+		NLA_PUT_U16(msg, NL80211_STA_BSS_PARAM_BEACON_INTERVAL,
+			    sinfo->bss_param.beacon_interval);
+
+		nla_nest_end(msg, bss_param);
+	}
 	nla_nest_end(msg, sinfoattr);
+
+	if (sinfo->filled & STATION_INFO_ASSOC_REQ_IES)
+		NLA_PUT(msg, NL80211_ATTR_IE, sinfo->assoc_req_ies_len,
+			sinfo->assoc_req_ies);
 
 	return genlmsg_end(msg, hdr);
 
@@ -5936,6 +5980,40 @@ void nl80211_send_sta_event(struct cfg80211_registered_device *rdev,
 
 	genlmsg_multicast_netns(wiphy_net(&rdev->wiphy), msg, 0,
 				nl80211_mlme_mcgrp.id, gfp);
+}
+
+void nl80211_send_sta_del_event(struct cfg80211_registered_device *rdev,
+				struct net_device *dev, const u8 *mac_addr,
+				gfp_t gfp)
+{
+	struct sk_buff *msg;
+	void *hdr;
+
+	msg = nlmsg_new(NLMSG_GOODSIZE, gfp);
+	if (!msg)
+		return;
+
+	hdr = nl80211hdr_put(msg, 0, 0, 0, NL80211_CMD_DEL_STATION);
+	if (!hdr) {
+		nlmsg_free(msg);
+		return;
+	}
+
+	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, dev->ifindex);
+	NLA_PUT(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr);
+
+	if (genlmsg_end(msg, hdr) < 0) {
+		nlmsg_free(msg);
+		return;
+	}
+
+	genlmsg_multicast_netns(wiphy_net(&rdev->wiphy), msg, 0,
+				nl80211_mlme_mcgrp.id, gfp);
+	return;
+
+ nla_put_failure:
+	genlmsg_cancel(msg, hdr);
+	nlmsg_free(msg);
 }
 
 int nl80211_send_mgmt(struct cfg80211_registered_device *rdev,

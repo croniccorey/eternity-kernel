@@ -413,7 +413,7 @@ struct station_parameters {
  * @STATION_INFO_PLID: @plid filled
  * @STATION_INFO_PLINK_STATE: @plink_state filled
  * @STATION_INFO_SIGNAL: @signal filled
- * @STATION_INFO_TX_BITRATE: @tx_bitrate fields are filled
+ * @STATION_INFO_TX_BITRATE: @txrate fields are filled
  *  (tx_bitrate, tx_bitrate_flags and tx_bitrate_mcs)
  * @STATION_INFO_RX_PACKETS: @rx_packets filled
  * @STATION_INFO_TX_PACKETS: @tx_packets filled
@@ -421,6 +421,10 @@ struct station_parameters {
  * @STATION_INFO_TX_FAILED: @tx_failed filled
  * @STATION_INFO_RX_DROP_MISC: @rx_dropped_misc filled
  * @STATION_INFO_SIGNAL_AVG: @signal_avg filled
+ * @STATION_INFO_RX_BITRATE: @rxrate fields are filled
+ * @STATION_INFO_BSS_PARAM: @bss_param filled
+ * @STATION_INFO_CONNECTED_TIME: @connected_time filled
+ * @STATION_INFO_ASSOC_REQ_IES: @assoc_req_ies filled
  */
 enum station_info_flags {
 	STATION_INFO_INACTIVE_TIME	= 1<<0,
@@ -437,6 +441,10 @@ enum station_info_flags {
 	STATION_INFO_TX_FAILED		= 1<<11,
 	STATION_INFO_RX_DROP_MISC	= 1<<12,
 	STATION_INFO_SIGNAL_AVG		= 1<<13,
+	STATION_INFO_RX_BITRATE		= 1<<14,
+	STATION_INFO_BSS_PARAM          = 1<<15,
+	STATION_INFO_CONNECTED_TIME	= 1<<16,
+	STATION_INFO_ASSOC_REQ_IES	= 1<<17
 };
 
 /**
@@ -471,11 +479,43 @@ struct rate_info {
 };
 
 /**
+ * enum station_info_rate_flags - bitrate info flags
+ *
+ * Used by the driver to indicate the specific rate transmission
+ * type for 802.11n transmissions.
+ *
+ * @BSS_PARAM_FLAGS_CTS_PROT: whether CTS protection is enabled
+ * @BSS_PARAM_FLAGS_SHORT_PREAMBLE: whether short preamble is enabled
+ * @BSS_PARAM_FLAGS_SHORT_SLOT_TIME: whether short slot time is enabled
+ */
+enum bss_param_flags {
+	BSS_PARAM_FLAGS_CTS_PROT	= 1<<0,
+	BSS_PARAM_FLAGS_SHORT_PREAMBLE	= 1<<1,
+	BSS_PARAM_FLAGS_SHORT_SLOT_TIME	= 1<<2,
+};
+
+/**
+ * struct sta_bss_parameters - BSS parameters for the attached station
+ *
+ * Information about the currently associated BSS
+ *
+ * @flags: bitflag of flags from &enum bss_param_flags
+ * @dtim_period: DTIM period for the BSS
+ * @beacon_interval: beacon interval
+ */
+struct sta_bss_parameters {
+	u8 flags;
+	u8 dtim_period;
+	u16 beacon_interval;
+};
+
+/**
  * struct station_info - station information
  *
  * Station information filled by driver for get_station() and dump_station.
  *
  * @filled: bitflag of flags from &enum station_info_flags
+ * @connected_time: time(in secs) since a station is last connected
  * @inactive_time: time since last station activity (tx/rx) in milliseconds
  * @rx_bytes: bytes received from this station
  * @tx_bytes: bytes transmitted to this station
@@ -494,9 +534,15 @@ struct rate_info {
  *	This number should increase every time the list of stations
  *	changes, i.e. when a station is added or removed, so that
  *	userspace can tell whether it got a consistent snapshot.
+ * @assoc_req_ies: IEs from (Re)Association Request.
+ *	This is used only when in AP mode with drivers that do not use
+ *	user space MLME/SME implementation. The information is provided for
+ *	the cfg80211_new_sta() calls to notify user space of the IEs.
+ * @assoc_req_ies_len: Length of assoc_req_ies buffer in octets.
  */
 struct station_info {
 	u32 filled;
+	u32 connected_time;
 	u32 inactive_time;
 	u32 rx_bytes;
 	u32 tx_bytes;
@@ -506,13 +552,18 @@ struct station_info {
 	s8 signal;
 	s8 signal_avg;
 	struct rate_info txrate;
+	struct rate_info rxrate;
 	u32 rx_packets;
 	u32 tx_packets;
 	u32 tx_retries;
 	u32 tx_failed;
 	u32 rx_dropped_misc;
+	struct sta_bss_parameters bss_param;
 
 	int generation;
+
+	const u8 *assoc_req_ies;
+	size_t assoc_req_ies_len;
 };
 
 /**
@@ -2652,6 +2703,15 @@ void cfg80211_remain_on_channel_expired(struct net_device *dev,
  */
 void cfg80211_new_sta(struct net_device *dev, const u8 *mac_addr,
 		      struct station_info *sinfo, gfp_t gfp);
+
+/**
+ * cfg80211_del_sta - notify userspace about deletion of a station
+ *
+ * @dev: the netdev
+ * @mac_addr: the station's address
+ * @gfp: allocation flags
+ */
+void cfg80211_del_sta(struct net_device *dev, const u8 *mac_addr, gfp_t gfp);
 
 /**
  * cfg80211_rx_mgmt - notification of received, unprocessed management frame
