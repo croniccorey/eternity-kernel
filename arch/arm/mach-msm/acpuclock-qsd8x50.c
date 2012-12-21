@@ -65,53 +65,51 @@ struct clkctl_acpu_speed {
 
 /* clock sources */
 #define CLK_TCXO	0 /* 19.2 MHz */
-#define CLK_GLOBAL_PLL	1 /* 750 MHz */
+#define CLK_GLOBAL_PLL	1 /* 760 MHz */
 #define CLK_MODEM_PLL	4 /* 245 MHz (UMTS) or 235.93 MHz (CDMA) */
 
 #define CCTL(src, div) (((src) << 4) | (div - 1))
 
 /* core sources */
 #define SRC_RAW		0 /* clock from SPSS_CLK_CNTL */
-#define SRC_SCPLL	1 /* output of scpll 19-1220 MHZ */
-#define SRC_AXI		2 /* 175 MHz */
-#define SRC_PLL1	3 /* 750 MHz */
+#define SRC_SCPLL	1 /* output of scpll 19-1856 MHZ */
+#define SRC_AXI		2 /* 176 MHz */
+#define SRC_PLL1	3 /* 760 MHz */
 
 struct clkctl_acpu_speed acpu_freq_tbl[] = {
   {  19200, CCTL(CLK_TCXO, 1),		SRC_RAW, 0, 0, 1050, 14000 , 1 },
-  { 175000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 1050, 14000 , 0 },
+  { 176000, CCTL(CLK_TCXO, 1),		SRC_AXI, 0, 0, 1050, 29000 , 0 },
   { 245000, CCTL(CLK_MODEM_PLL, 1),	SRC_RAW, 0, 0, 1050, 29000 , 0 },
-  /* Work arround for acpu resume hung, GPLL is turn off by arm9 */
-  /*{ 256000, CCTL(CLK_GLOBAL_PLL, 3),	SRC_RAW, 0, 0, 1050, 29000 , 1 },*/
-  { 400000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1050, 58000 , 1 },
-  { 450000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 , 1 },
-  { 500000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1075, 117000 , 0 },
-  { 550000, CCTL(CLK_TCXO, 1),  	SRC_SCPLL, 0x0D, 0, 1100, 117000 , 1 },
-  { 600000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1125, 117000 , 1 },
-  { 700000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1200, 117000 , 1 },
-  { 750000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1200, 128000 , 0 },
-  { 850000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1250, 128000 , 0 },
-  { 900000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1275, 128000 , 1 },
-  { 950000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1275, 128000 , 0 },
-  { 1000000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x14, 0, 1275, 128000 , 0 },
-  { 1050000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x15, 0, 1275, 128000 , 1 },
-  { 1100000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x16, 0, 1275, 128000 , 0 },
-  { 1150000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x17, 0, 1300, 176000 , 1 }, 
-  { 1200000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x18, 0, 1300, 176000 , 1 },
-  { 1250000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 176000 , 0 },
-  { 1300000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1B, 0, 1300, 176000 , 1 },
-  { 1350000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1C, 0, 1325, 176000 , 0 },
-  { 1400000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1D, 0, 1325, 176000 , 1 },
-  { 1450000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1E, 0, 1325, 176000 , 1 },
-  { 1500000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1F, 0, 1325, 176000 , 0 },
+  { 406000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0A, 0, 1050, 117000 , 1 },
+  { 446000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0B, 0, 1050, 117000 , 1 },
+  { 506000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0C, 0, 1075, 117000 , 0 },
+  { 554000, CCTL(CLK_TCXO, 1),  	SRC_SCPLL, 0x0D, 0, 1100, 117000 , 1 },
+  { 609000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0E, 0, 1125, 117000 , 1 },
+  { 703000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x0F, 0, 1200, 117000 , 1 },
+  { 760000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x10, 0, 1200, 128000 , 0 },
+  { 859000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x11, 0, 1250, 128000 , 0 },
+  { 902000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x12, 0, 1275, 128000 , 1 },
+  { 957000, CCTL(CLK_TCXO, 1),		SRC_SCPLL, 0x13, 0, 1275, 128000 , 0 },
+  { 1002000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x14, 0, 1275, 128000 , 0 },
+  { 1057000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x15, 0, 1275, 128000 , 1 },
+  { 1106000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x16, 0, 1275, 128000 , 0 },
+  { 1153000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x17, 0, 1300, 176000 , 1 }, 
+  { 1206000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x18, 0, 1300, 176000 , 1 },
+  { 1253000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1A, 0, 1300, 176000 , 0 },
+  { 1304000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1B, 0, 1300, 176000 , 1 },
+  { 1355000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1C, 0, 1325, 176000 , 0 },
+  { 1401000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1D, 0, 1325, 176000 , 1 },
+  { 1445000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1E, 0, 1325, 176000 , 1 },
+  { 1505000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x1F, 0, 1325, 176000 , 0 },
 /* EXPERIMENTAL USE AT YOUR OWN RISK */
 #ifdef CONFIG_EXPERIMENTAL_FREQ_TABLE
-  { 1550000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x20, 0, 1350, 176000 , 1 },
-  { 1600000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x21, 0, 1350, 176000 , 0 }, 
-  { 1650000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x22, 0, 1350, 176000 , 1 },
-  { 1700000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x23, 0, 1350, 256000 , 1 },
-  { 1750000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x24, 0, 1350, 256000 , 0 },
-  { 1800000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x25, 0, 1375, 256000 , 1 },
-  { 1850000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x26, 0, 1375, 256000 , 0 },
+  { 1547000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x20, 0, 1350, 176000 , 1 },
+  { 1603000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x21, 0, 1350, 176000 , 0 }, 
+  { 1656000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x22, 0, 1350, 176000 , 1 },
+  { 1703000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x23, 0, 1350, 256000 , 1 },
+  { 1754000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x24, 0, 1350, 256000 , 0 },
+  { 1802000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x25, 0, 1375, 256000 , 1 },
+  { 1856000, CCTL(CLK_TCXO, 1), 	SRC_SCPLL, 0x26, 0, 1375, 256000 , 0 },
 #endif
   { 0 },
 };
@@ -138,24 +136,18 @@ static void __init acpuclk_init_cpufreq_table(void)
 		freq_table[i].index = i;
 		freq_table[i].frequency = CPUFREQ_ENTRY_INVALID;
 
-		/* Skip speeds using the global pll */
-		/*if (acpu_freq_tbl[i].acpu_khz == 256000 ||
-				acpu_freq_tbl[i].acpu_khz == 19200)
-				continue;*/
-
 		vdd = acpu_freq_tbl[i].vdd;
 		if (acpu_freq_tbl[i].ignore==1) {
 		  continue;
 		}
 		/* Allow mpll and the first scpll speeds */
 		if (acpu_freq_tbl[i].acpu_khz == acpu_mpll->acpu_khz ||
-				acpu_freq_tbl[i].acpu_khz == 400000) {
+				acpu_freq_tbl[i].acpu_khz == 406000) {
 			freq_table[i].frequency = acpu_freq_tbl[i].acpu_khz;
 			continue;
 		}
 
 		/* Take the fastest speed available at the specified VDD level */
-		//if (vdd != acpu_freq_tbl[i + 1].vdd)
 			freq_table[i].frequency = acpu_freq_tbl[i].acpu_khz;
 	}
 
@@ -470,7 +462,7 @@ static unsigned __init acpuclk_find_speed(void)
 		val = (val >> 3) & 0x3f;
 		return val * 38400;
 	case 2:
-		return 128000;
+		return 176000;
 	default:
 		pr_err("acpu_find_speed: failed\n");
 		BUG();
@@ -507,15 +499,15 @@ static void __init acpuclk_init(void)
 		BUG();
 	}
 
-	/* Move to 750MHz for boot, which is a safe frequency
+	/* Move to 760MHz for boot, which is a safe frequency
 	 * for all versions of Scorpion at the moment.
 	 */
 	speed = acpu_freq_tbl;
 	for (;;) {
-		if (speed->acpu_khz == 750000)
+		if (speed->acpu_khz == 760000)
 			break;
 		if (speed->acpu_khz == 0) {
-			pr_err("acpuclk_init: cannot find 750MHz\n");
+			pr_err("acpuclk_init: cannot find 760MHz\n");
 			BUG();
 		}
 		speed++;
